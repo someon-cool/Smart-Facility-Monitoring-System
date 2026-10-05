@@ -125,13 +125,21 @@ def get_copilot_model() -> Optional[Any]:
 
         genai.configure(api_key=api_key)
 
-        for candidate in [GEMINI_MODEL_PRIMARY, GEMINI_MODEL_FALLBACK, "gemini-flash-latest"]:
+        candidates = [
+            "gemini-1.5-flash",
+            "gemini-2.0-flash",
+            "gemini-flash-latest",
+            GEMINI_MODEL_PRIMARY,
+            GEMINI_MODEL_FALLBACK,
+            "gemini-3.8-flash",
+        ]
+        for candidate in candidates:
             try:
                 m = genai.GenerativeModel(
                     candidate,
                     generation_config={
                         "temperature": 0.2,
-                        "max_output_tokens": 400,
+                        "max_output_tokens": 500,
                     },
                 )
                 _cached_copilot_model = m

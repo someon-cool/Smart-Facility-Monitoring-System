@@ -34,9 +34,13 @@ export function AiCopilotDrawer({ isOpen, onClose }: AiCopilotDrawerProps) {
 
   const quickPrompts = [
     "Which fixture has the worst water waste right now?",
-    "Summarize overnight leaks in Restroom A",
-    "What is the total utility cost impact?",
-    "Recommend maintenance priority order",
+    "What is our carbon footprint and main emission sources?",
+    "What is the current hygiene status across all zones?",
+    "Are there any offline or degraded sensors in the fleet?",
+    "Why was Sink_02 high flow during morning rush not flagged as a leak?",
+    "How much electricity do our fixtures consume?",
+    "Summarize overnight leaks and unusual trends",
+    "What is the total utility cost impact and water saved?",
   ];
 
   const handleSend = async (queryText?: string) => {
@@ -137,17 +141,29 @@ export function AiCopilotDrawer({ isOpen, onClose }: AiCopilotDrawerProps) {
             </button>
           </div>
 
-          {/* Quick Prompts */}
-          <div className="px-4 py-2.5 bg-[#080808] border-b border-white/[0.06] overflow-x-auto flex gap-2 no-scrollbar">
-            {quickPrompts.map((qp, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleSend(qp)}
-                className="whitespace-nowrap px-2.5 py-1 rounded-full text-[11px] bg-white/[0.04] hover:bg-white/[0.1] text-[#C9D1D9] hover:text-[#F0F6FC] border border-white/[0.08] transition-all shrink-0"
-              >
-                {qp}
-              </button>
-            ))}
+          {/* Recommended Questions (Stacked vertically with scroller) */}
+          <div className="px-4 py-2.5 bg-[#080808] border-b border-white/[0.06]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-semibold text-[#8B949E] uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="h-3 w-3 text-[#D4A359]" />
+                Recommended Questions
+              </span>
+              <span className="text-[10px] text-[#8B949E]/70 font-mono">
+                {quickPrompts.length} prompts · scroll
+              </span>
+            </div>
+            <div className="max-h-36 overflow-y-auto pr-1 space-y-1.5 scrollbar-thin scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20">
+              {quickPrompts.map((qp, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleSend(qp)}
+                  className="w-full text-left px-3 py-1.5 rounded-md text-[11px] bg-[#121212] hover:bg-[#1A202A] text-[#C9D1D9] hover:text-[#F0F6FC] border border-white/[0.06] hover:border-[#D4A359]/30 transition-all flex items-center justify-between group shadow-sm"
+                >
+                  <span className="line-clamp-2 pr-2 leading-tight">{qp}</span>
+                  <CornerDownLeft className="h-3 w-3 text-[#8B949E] opacity-0 group-hover:opacity-100 group-hover:text-[#D4A359] transition-all shrink-0" />
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Chat Messages */}

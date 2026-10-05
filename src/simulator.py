@@ -48,7 +48,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from src.config import (
     SIM_START, SIM_DURATION_HOURS, READING_INTERVAL_MINUTES,
     FIXTURES, EVENT_PARAMS, BASE_EVENTS_PER_HOUR, ZONE_TRAFFIC_MULTIPLIER,
-    ANOMALY_SCHEDULE,
+    ANOMALY_SCHEDULE, SENSOR_FAULT_SCHEDULE,
     DB_PATH,
 )
 from src.database import init_db, insert_readings_df
@@ -128,6 +128,28 @@ def simulate_fixture(
         minute_offset = i
         hour = ts.hour
 
+        # ── Sensor fault injection (runs before anomaly/normal sim) ─────────────
+        fault_injected = False
+        for fault in SENSOR_FAULT_SCHEDULE:
+            if fixture_id != fault["fixture_id"]:
+                continue
+            if in_hour_window(minute_offset, fault["start_hour"], fault["end_hour"]):
+                status_arr[i] = fault["status"]
+                # OFFLINE: zero flow during connectivity drop
+                if fault["status"] == "OFFLINE":
+                    flows[i]     = 0.0
+                    occupancy[i] = 0
+                    flush_cnt[i] = flush_count
+                    fault_injected = True
+                # FAULT: erratic/noisy flow reading, not reliable
+                elif fault["status"] == "FAULT":
+                    flows[i]     = max(0.0, rng.normal(0.3, 0.15))  # spurious noise
+                    occupancy[i] = 0
+                    flush_cnt[i] = flush_count
+                    fault_injected = True
+                # DEGRADED: continues normally but status is marked
+                break
+
         # ── Anomaly injection (priority over normal simulation) ────────────────
         injected = False
         for anomaly in ANOMALY_SCHEDULE:
@@ -148,7 +170,7 @@ def simulate_fixture(
                 injected = True
                 break
 
-        if injected:
+        if injected or fault_injected:
             continue
 
         # ── Normal discrete-event simulation ──────────────────────────────────
@@ -317,6 +339,14 @@ def run_batch(random_seed: int = 42) -> None:
     print("\n[OK] Done.")
     print(f"  Rows written : {len(combined):,}")
     print(f"  Date range   : {combined['timestamp'].iloc[0]}  ->  {combined['timestamp'].iloc[-1]}")
+
+    # ── Post-simulation: generate energy_readings from sensor_readings ─────────
+    print("\nGenerating energy readings from sensor data...")
+    try:
+        from src.carbon import simulate_energy_readings
+        simulate_energy_readings(str(DB_PATH))
+    except Exception as e:
+        print(f"  [WARNING] Energy simulation failed: {e} (run separately via src/carbon.py)")
 
     # Event density summary
     print("\nEvent density check (rows with flow > 0.1 LPM):")

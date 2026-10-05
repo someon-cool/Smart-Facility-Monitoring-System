@@ -177,3 +177,131 @@ export interface FixtureHealthApiResponse {
   summary: FacilityHealthSummary;
   fixtures: FixtureHealthRecord[];
 }
+
+export interface ZoneHygieneSummary {
+  zone_id: string;
+  current_score: number;
+  status: "Clean" | "Moderate" | "Attention Needed" | "Critical";
+  trend: "Improving" | "Stable" | "Worsening";
+  minutes_since_clean: number;
+  load_factor: number;
+  flush_count_last_hour: number;
+  last_clean_at: string | null;
+  missed_events_24h: number;
+}
+
+export interface FacilityHygieneSummary {
+  average_score: number;
+  facility_status: "Clean" | "Moderate" | "Attention Needed" | "Critical";
+  clean_zones_count: number;
+  attention_zones_count: number;
+  critical_zones_count: number;
+  total_missed_events_24h: number;
+  zones: ZoneHygieneSummary[];
+}
+
+export interface HygieneEvent {
+  id: number;
+  zone_id: string;
+  event_type: string;
+  scheduled_at: string;
+  completed_at: string | null;
+  completed_by: string | null;
+  duration_minutes: number | null;
+  status: "completed" | "missed" | "scheduled";
+  hygiene_score_before: number | null;
+  hygiene_score_after: number | null;
+  notes: string;
+  created_at: string;
+}
+
+export interface ZoneCarbonBreakdown {
+  zone_id: string;
+  carbon_total_kg: number;
+  carbon_water_kg: number;
+  carbon_waste_kg: number;
+  carbon_energy_kg: number;
+  energy_kwh: number;
+  water_consumed_liters: number;
+}
+
+export interface CarbonSummary {
+  period_days: number;
+  carbon_total_kg: number;
+  carbon_from_water_kg: number;
+  carbon_from_waste_kg: number;
+  carbon_from_energy_kg: number;
+  total_energy_kwh: number;
+  total_water_consumed_liters: number;
+  total_water_wasted_liters: number;
+  electricity_cost_inr: number;
+  water_cost_inr: number;
+  peer_benchmark_7d_kg: number;
+  vs_benchmark_kg: number;
+  vs_benchmark_pct: number;
+  highest_emission_zone: ZoneCarbonBreakdown | null;
+  zone_breakdown: ZoneCarbonBreakdown[];
+  model_notice: string;
+}
+
+export interface CarbonSnapshot {
+  id?: number;
+  timestamp: string;
+  zone_id: string | null;
+  fixture_id?: string | null;
+  water_consumed_liters: number;
+  water_wasted_liters: number;
+  energy_kwh: number;
+  carbon_water_kg: number;
+  carbon_waste_kg: number;
+  carbon_energy_kg: number;
+  carbon_total_kg: number;
+  baseline_carbon_kg?: number | null;
+  carbon_delta_kg?: number | null;
+  period: "hourly" | "daily";
+  calculated_at?: string;
+}
+
+export interface SensorLatestReading {
+  flow_rate_lpm: number;
+  occupancy: number;
+  occupancy_label: string;
+  flush_count_cumulative: number;
+  timestamp: string;
+}
+
+export interface SensorRecord {
+  fixture_id: string;
+  display_name: string;
+  zone_id: string;
+  fixture_type: "sink" | "toilet" | "urinal";
+  brand_model: string;
+  sensor_type: "infrared" | "ultrasonic" | "passive_infrared";
+  sensor_tech_label: string;
+  parameter_measured: string;
+  parameter_units: string;
+  nominal_flow_lpm: number;
+  latest_reading: SensorLatestReading;
+  status: "OK" | "DEGRADED" | "FAULT" | "OFFLINE";
+  uptime_pct: number;
+  fault_samples: number;
+  install_date?: string;
+  last_maintenance_date?: string;
+}
+
+export interface SensorFleetSummary {
+  total_sensors: number;
+  online_count: number;
+  degraded_count: number;
+  fault_count: number;
+  offline_count: number;
+  average_uptime_pct: number;
+  last_telemetry_timestamp: string;
+}
+
+export interface SensorIntelligenceApiResponse {
+  summary: SensorFleetSummary;
+  sensors: SensorRecord[];
+}
+
+

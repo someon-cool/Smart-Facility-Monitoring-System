@@ -5,6 +5,10 @@ import { Header } from "@/components/Header";
 import { MetricCards } from "@/components/MetricCards";
 import { SustainabilityPanel } from "@/components/SustainabilityPanel";
 import { FixtureHealthView } from "@/components/FixtureHealthView";
+import { HygieneView } from "@/components/HygieneView";
+import { CarbonBreakdownCard } from "@/components/CarbonBreakdownCard";
+import { CarbonView } from "@/components/CarbonView";
+import { SensorIntelligenceSection } from "@/components/SensorIntelligenceSection";
 import { FlowRateChart } from "@/components/FlowRateChart";
 import { OccupancyHeatmap } from "@/components/OccupancyHeatmap";
 import { TicketsView } from "@/components/TicketsView";
@@ -20,10 +24,16 @@ import {
   FixtureHealthRecord,
   FacilityHealthSummary,
   FixtureHealthApiResponse,
+  FacilityHygieneSummary,
+  HygieneEvent,
+  CarbonSummary,
+  SensorRecord,
+  SensorFleetSummary,
+  SensorIntelligenceApiResponse,
 } from "@/components/types";
 
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "tickets" | "sustainability" | "health">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "tickets" | "sustainability" | "health" | "hygiene" | "carbon" | "sensors">("dashboard");
   const [viewMode, setViewMode] = useState<"full" | "replay">("full");
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
 
@@ -39,6 +49,11 @@ export default function DashboardPage() {
   const [sustainability, setSustainability] = useState<SustainabilitySummary | null>(null);
   const [fixtureHealth, setFixtureHealth] = useState<FixtureHealthRecord[]>([]);
   const [healthSummary, setHealthSummary] = useState<FacilityHealthSummary | null>(null);
+  const [hygieneSummary, setHygieneSummary] = useState<FacilityHygieneSummary | null>(null);
+  const [hygieneEvents, setHygieneEvents] = useState<HygieneEvent[]>([]);
+  const [carbonSummary, setCarbonSummary] = useState<CarbonSummary | null>(null);
+  const [sensors, setSensors] = useState<SensorRecord[]>([]);
+  const [sensorSummary, setSensorSummary] = useState<SensorFleetSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Replay Simulator State
@@ -65,6 +80,19 @@ export default function DashboardPage() {
       const fetchZoneTotals = fetch("/api/readings/zone-totals?downsample_mins=5").then(async (r) => {
         if (r.ok) setZoneTotals(await r.json());
       });
+      const fetchHygiene = fetch("/api/hygiene/summary").then(async (r) => {
+        if (r.ok) setHygieneSummary(await r.json());
+      });
+      const fetchCarbon = fetch("/api/carbon/summary").then(async (r) => {
+        if (r.ok) setCarbonSummary(await r.json());
+      });
+      const fetchSensors = fetch("/api/sensors").then(async (r) => {
+        if (r.ok) {
+          const d: SensorIntelligenceApiResponse = await r.json();
+          setSensors(d.sensors || []);
+          setSensorSummary(d.summary || null);
+        }
+      });
       const fetchHeatmap = fetch("/api/occupancy-heatmap").then(async (r) => {
         if (r.ok) setHeatmapData(await r.json());
       });
@@ -77,13 +105,16 @@ export default function DashboardPage() {
       const fetchReadings = fetch("/api/readings?downsample_mins=5").then(async (r) => {
         if (r.ok) setReadings(await r.json());
       });
+      const fetchHygieneEvents = fetch("/api/hygiene/events?limit=100").then(async (r) => {
+        if (r.ok) setHygieneEvents(await r.json());
+      });
 
       // Unlock initial dashboard view as soon as core operational metrics & chart totals land
-      await Promise.all([fetchOverview, fetchTickets, fetchHealth, fetchZoneTotals]);
+      await Promise.all([fetchOverview, fetchTickets, fetchHealth, fetchZoneTotals, fetchHygiene, fetchCarbon, fetchSensors]);
       setLoading(false);
 
       // Remaining secondary datasets resolve in background
-      await Promise.all([fetchHeatmap, fetchDigests, fetchSustainability, fetchReadings]);
+      await Promise.all([fetchHeatmap, fetchDigests, fetchSustainability, fetchReadings, fetchHygieneEvents]);
     } catch (err) {
       console.error("Error fetching facility telemetry:", err);
       setLoading(false);
@@ -139,6 +170,47 @@ export default function DashboardPage() {
     }
   };
 
+  // Hygiene Event Handlers (Mark cycle completed or trigger sanitize)
+  const handleCompleteHygieneEvent = async (eventId: number) => {
+    try {
+      const res = await fetch(`/api/hygiene/events/${eventId}/complete`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed_by: "Housekeeping Staff", score_after: 96.0 }),
+      });
+      if (res.ok) {
+        const [sumRes, evRes] = await Promise.all([
+          fetch("/api/hygiene/summary"),
+          fetch("/api/hygiene/events?limit=100"),
+        ]);
+        if (sumRes.ok) setHygieneSummary(await sumRes.json());
+        if (evRes.ok) setHygieneEvents(await evRes.json());
+      }
+    } catch (err) {
+      console.error("Failed to complete hygiene event:", err);
+    }
+  };
+
+  const handleCleanZone = async (zoneId: string) => {
+    try {
+      const res = await fetch("/api/hygiene/clean-zone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ zone_id: zoneId, completed_by: "Sanitation Lead", score_after: 98.0 }),
+      });
+      if (res.ok) {
+        const [sumRes, evRes] = await Promise.all([
+          fetch("/api/hygiene/summary"),
+          fetch("/api/hygiene/events?limit=100"),
+        ]);
+        if (sumRes.ok) setHygieneSummary(await sumRes.json());
+        if (evRes.ok) setHygieneEvents(await evRes.json());
+      }
+    } catch (err) {
+      console.error("Failed to clean zone:", err);
+    }
+  };
+
   // Replay Simulator: Filtered data according to replayHours
   const replayCutoffDate = useMemo(() => {
     if (!metrics?.sim_start) return new Date("2024-01-15T00:00:00");
@@ -182,6 +254,7 @@ export default function DashboardPage() {
   }, [viewMode, metrics, activeTickets, replayHours]);
 
   const openTicketsCount = activeTickets.filter((t) => t.status !== "resolved").length;
+  const hygieneAlertCount = (hygieneSummary?.critical_zones_count ?? 0) + (hygieneSummary?.attention_zones_count ?? 0);
 
   return (
     <div className="min-h-screen bg-[#080808] text-[#F0F6FC] flex flex-col font-sans selection:bg-[#D4A359]/30">
@@ -189,15 +262,9 @@ export default function DashboardPage() {
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        viewMode={viewMode}
-        setViewMode={(mode) => {
-          setViewMode(mode);
-          if (mode === "replay") {
-            setIsPlaying(false);
-          }
-        }}
         openCopilot={() => setIsCopilotOpen(true)}
         openTicketsCount={openTicketsCount}
+        hygieneAlertCount={hygieneAlertCount}
       />
 
       {/* Main Content Area */}
@@ -222,10 +289,38 @@ export default function DashboardPage() {
           />
         )}
 
+        {activeTab === "hygiene" && (
+          <HygieneView
+            summary={hygieneSummary}
+            events={hygieneEvents}
+            loading={loading}
+            onRefresh={fetchData}
+            onCompleteEvent={handleCompleteHygieneEvent}
+            onCleanZone={handleCleanZone}
+          />
+        )}
+
+        {activeTab === "carbon" && (
+          <CarbonView summary={carbonSummary} loading={loading} />
+        )}
+
+        {activeTab === "sensors" && (
+          <SensorIntelligenceSection
+            summary={sensorSummary}
+            sensors={sensors}
+            loading={loading}
+          />
+        )}
+
         {activeTab === "dashboard" && (
           <div className="space-y-8">
-            {/* 1. Top-Level Metric Cards (4 cards) */}
-            <MetricCards metrics={activeMetrics} healthSummary={healthSummary} loading={loading} />
+            {/* 1. Top-Level Metric Cards (5 cards) */}
+            <MetricCards
+              metrics={activeMetrics}
+              healthSummary={healthSummary}
+              carbonSummary={carbonSummary}
+              loading={loading}
+            />
 
             {/* Replay Scrubber Banner (if replay mode, directly above Flow Rate Telemetry Chart) */}
             {viewMode === "replay" && (
@@ -243,11 +338,18 @@ export default function DashboardPage() {
               />
             )}
 
-            {/* 2. Flow Rate Telemetry Chart (Recharts) */}
+            {/* 2. Flow Rate Telemetry Chart (Recharts) with Full Dataset / Replay controls */}
             <FlowRateChart
               readings={readings}
               zoneTotals={zoneTotals}
               loading={loading}
+              viewMode={viewMode}
+              onViewModeChange={(mode) => {
+                setViewMode(mode);
+                if (mode === "replay") {
+                  setIsPlaying(false);
+                }
+              }}
               isReplay={viewMode === "replay"}
               replayCutoffDate={replayCutoffDate}
               replayHours={replayHours}
@@ -256,6 +358,13 @@ export default function DashboardPage() {
 
             {/* 3. Occupancy Heatmap (17 fixtures x 24h) */}
             <OccupancyHeatmap data={heatmapData} loading={loading} />
+
+            {/* 4. Estimated Carbon Footprint & Contributor Breakdown Banner (Placed below the graphs) */}
+            <CarbonBreakdownCard
+              summary={carbonSummary}
+              loading={loading}
+              onExploreMore={() => setActiveTab("carbon")}
+            />
           </div>
         )}
       </main>

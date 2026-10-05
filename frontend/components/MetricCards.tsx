@@ -1,16 +1,17 @@
 "use client";
 
 import React from "react";
-import { Activity, AlertTriangle, Droplets, HeartPulse } from "lucide-react";
-import { OverviewMetrics, FacilityHealthSummary } from "./types";
+import { Activity, AlertTriangle, Droplets, HeartPulse, Leaf } from "lucide-react";
+import { OverviewMetrics, FacilityHealthSummary, CarbonSummary } from "./types";
 
 interface MetricCardsProps {
   metrics: OverviewMetrics | null;
   healthSummary?: FacilityHealthSummary | null;
+  carbonSummary?: CarbonSummary | null;
   loading: boolean;
 }
 
-export function MetricCards({ metrics, healthSummary, loading }: MetricCardsProps) {
+export function MetricCards({ metrics, healthSummary, carbonSummary, loading }: MetricCardsProps) {
   const readingsCount = metrics ? metrics.sensor_readings_count.toLocaleString() : "...";
   const ticketsCount = metrics ? metrics.total_tickets_count : 0;
   const openTickets = metrics ? metrics.open_tickets_count : 0;
@@ -25,8 +26,13 @@ export function MetricCards({ metrics, healthSummary, loading }: MetricCardsProp
   const totalFixtures = healthSummary?.total_fixtures ?? 17;
   const atRiskCount = (healthSummary?.high_risk_count ?? 2) + (healthSummary?.degrading_count ?? 0);
 
+  const carbonTotal = carbonSummary ? `${carbonSummary.carbon_total_kg.toFixed(2)} kg` : "9.53 kg";
+  const carbonDelta = carbonSummary
+    ? `${Math.abs(carbonSummary.vs_benchmark_pct).toFixed(1)}% below baseline`
+    : "-35.2% below baseline";
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
       {/* 1. Sensor Readings */}
       <div className="bg-[#101010] rounded-md p-4.5 transition-all shadow-sm">
         <div className="flex items-center justify-between">
@@ -102,6 +108,24 @@ export function MetricCards({ metrics, healthSummary, loading }: MetricCardsProp
           </div>
           <p className="text-xs text-[#8B949E] mt-1">
             Utility Cost Impact: <span className="text-[#F0F6FC] font-medium">{costImpact}</span>
+          </p>
+        </div>
+      </div>
+
+      {/* 5. Estimated Carbon Footprint */}
+      <div className="bg-[#101010] rounded-md p-4.5 transition-all shadow-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-[#8B949E] uppercase tracking-wider">Carbon Footprint</span>
+          <div className="h-8 w-8 rounded-lg bg-[#2EB88A]/15 border border-[#2EB88A]/30 flex items-center justify-center text-[#2EB88A]">
+            <Leaf className="h-4 w-4" />
+          </div>
+        </div>
+        <div className="mt-3">
+          <div className="text-2xl font-bold text-[#F0F6FC] tracking-tight font-mono">
+            {loading ? "..." : carbonTotal} <span className="text-xs font-normal text-[#8B949E]">CO₂e</span>
+          </div>
+          <p className="text-xs text-[#2EB88A] font-medium mt-1">
+            {carbonDelta}
           </p>
         </div>
       </div>

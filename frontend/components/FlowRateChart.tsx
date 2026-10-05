@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { Layers, Sliders } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -17,6 +18,8 @@ interface FlowRateChartProps {
   readings: Reading[];
   zoneTotals: { timestamp_str: string; zone_id: string; flow_rate_lpm: number }[];
   loading: boolean;
+  viewMode?: "full" | "replay";
+  onViewModeChange?: (mode: "full" | "replay") => void;
   isReplay?: boolean;
   replayCutoffDate?: Date;
   replayHours?: number;
@@ -101,6 +104,8 @@ export function FlowRateChart({
   readings,
   zoneTotals,
   loading,
+  viewMode = "full",
+  onViewModeChange,
   isReplay = false,
   replayCutoffDate,
   replayHours = 0,
@@ -295,8 +300,39 @@ export function FlowRateChart({
           </p>
         </div>
 
-        {/* View Mode Radio & Zone Chips */}
+        {/* Controls: Mode Switcher (Full Dataset / Replay) & Aggregation Switcher */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Full Dataset vs Replay Mode Switcher */}
+          {onViewModeChange && (
+            <div className="flex items-center bg-[#080808] p-1 rounded-md border border-white/[0.08]">
+              <button
+                id="btn-mode-full"
+                onClick={() => onViewModeChange("full")}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-all ${
+                  viewMode === "full"
+                    ? "bg-[#1B222C] text-white shadow-sm font-semibold border border-white/10"
+                    : "text-[#8B949E] hover:text-white"
+                }`}
+              >
+                <Layers className="h-3.5 w-3.5 text-[#4D88C7]" />
+                <span>Full Dataset</span>
+              </button>
+              <button
+                id="btn-mode-replay"
+                onClick={() => onViewModeChange("replay")}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-all ${
+                  viewMode === "replay"
+                    ? "bg-[#1B222C] text-white shadow-sm font-semibold border border-[#D4A359]/30"
+                    : "text-[#8B949E] hover:text-white"
+                }`}
+              >
+                <Sliders className="h-3.5 w-3.5 text-[#D4A359]" />
+                <span>Replay</span>
+              </button>
+            </div>
+          )}
+
+          {/* Aggregation Switcher */}
           <div className="flex items-center bg-[#080808] p-1 rounded-md">
             <button
               onClick={() => setChartMode("zone_total")}

@@ -277,3 +277,78 @@ LLM_MAX_RETRIES             = 1
 LLM_RETRY_BACKOFF_SECONDS   = 2.0
 LLM_REQUEST_DELAY_SECONDS   = 0.6   # paces requests to respect Gemini free-tier RPM
 
+
+# ── Energy & Carbon (new modules) ─────────────────────────────────────────────
+# Electricity cost: midpoint of Indian commercial tariff slabs (MSEDCL / BESCOM)
+ELECTRICITY_COST_PER_KWH_INR = 8.50  # Rs. per kWh
+
+# Carbon emission factors (India-specific, 2023)
+# Water treatment + distribution: IPCC / BIS standard for municipal water
+CARBON_FACTOR_WATER_KG_PER_LITER = 0.000298       # kg CO₂e per litre consumed
+# India electricity grid: CEA 2023 national average emission factor
+CARBON_FACTOR_ELECTRICITY_KG_PER_KWH = 0.82       # kg CO₂e per kWh
+# Water heating carbon (where applicable — blended with grid factor)
+CARBON_FACTOR_HEATED_WATER_KG_PER_LITER = 0.00085  # kg CO₂e per litre heated
+
+# Per-fixture electrical power draw (watts).
+# Source: KOHLER commercial fixture spec sheets + ASHRAE 90.1 plumbing guidance.
+# active_w  = power draw during a water-use event (solenoid open, sensor active)
+# idle_w    = standby power draw between events (sensor polling, MCU alive)
+FIXTURE_POWER_SPECS = {
+    "sink": {
+        "active_w": 8.0,    # sensor + solenoid valve energised
+        "idle_w":   0.5,    # infrared proximity sensor polling
+        "sensor_type": "infrared",
+    },
+    "toilet": {
+        "active_w": 12.0,   # flush solenoid + pressure transducer peak draw
+        "idle_w":   0.8,    # occupancy sensor + MCU standby
+        "sensor_type": "ultrasonic",
+    },
+    "urinal": {
+        "active_w": 10.0,   # flush solenoid + passive IR
+        "idle_w":   0.6,    # passive IR sensor heartbeat
+        "sensor_type": "passive_infrared",
+    },
+}
+
+# Sensor fault injection schedule for simulator augmentation.
+# Each entry defines a continuous fault window on a specific fixture.
+# Fault types: "DEGRADED" (noisy signal), "FAULT" (hardware failure), "OFFLINE" (connectivity drop)
+SENSOR_FAULT_SCHEDULE = [
+    # Sink_03 — intermittent DEGRADED signal (Day 2, 14:00–16:00, 2h)
+    {"fixture_id": "Sink_03",   "zone_id": "T2_Restroom_A",  "start_hour": 38,  "end_hour": 40,  "status": "DEGRADED"},
+    # Toilet_A1 — hardware FAULT (Day 4, 03:00–05:00, 2h overnight)
+    {"fixture_id": "Toilet_A1", "zone_id": "T2_Restroom_A",  "start_hour": 75,  "end_hour": 77,  "status": "FAULT"},
+    # Sink_05 — OFFLINE connectivity drop (Day 5, 22:00–23:30, 1.5h)
+    {"fixture_id": "Sink_05",   "zone_id": "T2_Restroom_B",  "start_hour": 118, "end_hour": 120, "status": "OFFLINE"},
+    # Urinal_B1 — DEGRADED (Day 6, 08:00–10:00, morning rush noise)
+    {"fixture_id": "Urinal_B1", "zone_id": "T2_Restroom_B",  "start_hour": 128, "end_hour": 130, "status": "DEGRADED"},
+    # Toilet_F1 — FAULT (Day 7, 01:00–04:00, overnight hardware failure)
+    {"fixture_id": "Toilet_F1", "zone_id": "T2_Family_Room", "start_hour": 145, "end_hour": 149, "status": "FAULT"},
+]
+
+# ── Hygiene Module ─────────────────────────────────────────────────────────────
+# Cleaning interval targets per zone traffic tier (minutes between cycles)
+HYGIENE_CLEANING_INTERVALS = {
+    "T2_Restroom_A":  90,   # High traffic — clean every 90 minutes during peak
+    "T2_Restroom_B":  120,  # Medium traffic — clean every 2 hours
+    "T2_Family_Room": 180,  # Low traffic — clean every 3 hours
+    "T2_Staff_WC":    240,  # Staff only — clean every 4 hours
+}
+
+# Hygiene score model: score degrades exponentially from 100 after a clean
+# score = 100 × exp(-λ × minutes_since_clean) adjusted by load
+HYGIENE_DECAY_RATE = 0.008          # λ: decay constant (score ≈ 60 at interval target)
+HYGIENE_LOAD_PENALTY_PER_USE = 0.4  # score penalty per fixture-use event in zone
+
+# Hygiene score thresholds → status labels
+HYGIENE_SCORE_CLEAN     = 80   # ≥80: Clean
+HYGIENE_SCORE_MODERATE  = 60   # 60–79: Moderate
+HYGIENE_SCORE_ATTENTION = 40   # 40–59: Attention Needed
+# below 40: Critical
+
+# Simulated cleaning schedule: ratio of cleaning events that are "missed"
+HYGIENE_MISSED_EVENT_RATE = 0.10   # 10% of scheduled events are missed
+
+

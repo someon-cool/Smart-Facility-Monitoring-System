@@ -587,6 +587,49 @@ def run_detection() -> None:
     health_records = compute_all_fixture_health(str(DB_PATH))
     print(f"  Calculated health records for {len(health_records)} fixtures.")
 
+    # Pass 7 -- Seed static config tables (facility, zone, fixture metadata)
+    print("\nPass 7 -- Seeding facility/zone/fixture config tables...")
+    try:
+        from src.seed_config import run_seed
+        run_seed(str(DB_PATH))
+    except Exception as e:
+        print(f"  [WARNING] Config seeding failed: {e}")
+
+    # Pass 8 -- Hygiene Module: simulate cleaning schedule + hourly scores
+    print("\nPass 8 -- Generating hygiene events and scores...")
+    try:
+        from src.hygiene import simulate_cleaning_schedule, compute_hygiene_scores
+        simulate_cleaning_schedule(str(DB_PATH))
+        compute_hygiene_scores(str(DB_PATH))
+    except Exception as e:
+        print(f"  [WARNING] Hygiene module failed: {e}")
+
+    # Pass 9 -- Carbon Footprint: energy readings + carbon snapshots
+    print("\nPass 9 -- Computing carbon footprint snapshots...")
+    try:
+        from src.carbon import simulate_energy_readings, compute_carbon_snapshots
+        # Only generate energy_readings if not already populated by simulator
+        import sqlite3 as _sqlite3
+        _ec = _sqlite3.connect(str(DB_PATH))
+        _er_count = _ec.execute("SELECT COUNT(*) FROM energy_readings").fetchone()[0]
+        _ec.close()
+        if _er_count == 0:
+            simulate_energy_readings(str(DB_PATH))
+        else:
+            print(f"  [carbon] Energy readings already present ({_er_count:,} rows), skipping re-simulation.")
+        compute_carbon_snapshots(str(DB_PATH))
+    except Exception as e:
+        print(f"  [WARNING] Carbon module failed: {e}")
+
+    # Pass 10 -- Sustainability Recommendations
+    print("\nPass 10 -- Generating sustainability recommendations...")
+    try:
+        from src.recommendations import generate_recommendations
+        generate_recommendations(str(DB_PATH))
+    except Exception as e:
+        print(f"  [WARNING] Recommendations module failed: {e}")
+
+
     # Scenario verification
     print("\n" + "-" * 70)
     print("SCENARIO VERIFICATION")

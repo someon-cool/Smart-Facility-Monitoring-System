@@ -1,21 +1,62 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const ibmPlexSans = IBM_Plex_Sans({
+  variable: "--font-ibm-plex-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
+  fallback: [
+    "IBM Plex Sans",
+    "ui-sans-serif",
+    "system-ui",
+    "-apple-system",
+    "Segoe UI",
+    "Roboto",
+    "Helvetica Neue",
+    "Arial",
+    "sans-serif",
+  ],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-ibm-plex-mono",
   subsets: ["latin"],
+  weight: ["400", "500"],
+  display: "swap",
+  fallback: [
+    "IBM Plex Mono",
+    "ui-monospace",
+    "SFMono-Regular",
+    "Menlo",
+    "Consolas",
+    "monospace",
+  ],
 });
 
 export const metadata: Metadata = {
-  title: "KOHLER Smart Facility Monitor — Airport Restroom Operations",
-  description: "Terminal 2 multi-signal telemetry, anomaly detection, and AI explainability command center.",
+  title: "Facility Monitor",
+  description:
+    "Terminal 2 airport restroom operations platform — real-time water telemetry, fixture health, hygiene monitoring, and sustainability tracking across 17 smart fixtures and 4 zones.",
 };
+
+/**
+ * Inline script to set data-theme before first paint, preventing flash.
+ * Reads from localStorage, falls back to prefers-color-scheme.
+ */
+const themeScript = `
+(function() {
+  try {
+    var stored = localStorage.getItem('facility-theme');
+    if (stored === 'dark' || stored === 'light') {
+      document.documentElement.setAttribute('data-theme', stored);
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  } catch(e) {}
+})();
+`;
 
 export default function RootLayout({
   children,
@@ -23,8 +64,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}>
-      <body className="min-h-full bg-[#0D1117] text-[#F0F6FC] selection:bg-[#6B8CAE]/30 selection:text-white">
+    <html
+      lang="en"
+      className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} h-full`}
+      suppressHydrationWarning
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
+      <body className="min-h-full">
         {children}
       </body>
     </html>

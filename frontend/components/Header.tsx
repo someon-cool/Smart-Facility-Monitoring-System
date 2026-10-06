@@ -25,7 +25,7 @@ export function Header({
         <div className="shrink-0 flex items-center gap-3">
           <div>
             <h1 className="text-base font-bold tracking-wider text-white uppercase flex items-center gap-1.5">
-              KOHLER <span className="font-light text-[#8B949E]">Facility Monitor</span>
+              SMART <span className="font-light text-[#8B949E]">Facility Monitor</span>
             </h1>
             <p className="text-[10px] text-[#8B949E] hidden lg:block">
               Terminal 2 Airport Restroom · 17 Smart Fixtures

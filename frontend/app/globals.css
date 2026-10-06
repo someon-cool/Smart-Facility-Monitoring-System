@@ -1,94 +1,399 @@
 @import "tailwindcss";
 
-@theme {
-  --color-page: #080808;
-  --color-surface: #101010;
+/* ============================================================
+   Smart Facility Monitor — Design Tokens
+   "Porcelain & brass": calm, precise, industrial-editorial.
+   ============================================================ */
+
+@theme inline {
+  /* ---- Neutral scale (warm stone, 10 steps) ---- */
+  --color-n-50:  #F7F6F3;
+  --color-n-100: #EFEDE8;
+  --color-n-200: #E1DED7;
+  --color-n-300: #CBC7BE;
+  --color-n-400: #9A968C;
+  --color-n-500: #8C887E;
+  --color-n-600: #6B675E;
+  --color-n-700: #4A4740;
+  --color-n-800: #2A2926;
+  --color-n-900: #1A1917;
+
+  /* ---- Font families ---- */
+  --font-sans: var(--font-ibm-plex-sans), "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* ---- Radius ---- */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-full: 9999px;
+
+  /* ---- Shadows (light theme defaults) ---- */
+  --shadow-1: 0 1px 2px rgb(26 25 23 / 0.06);
+  --shadow-2: 0 4px 16px rgb(26 25 23 / 0.10);
+  --shadow-3: 0 16px 48px rgb(26 25 23 / 0.16);
+
+  /* ---- Motion ---- */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in:  cubic-bezier(0.4, 0, 1, 1);
+
+  /* ---- Layout ---- */
+  --container-max: 1440px;
 }
 
+/* ============================================================
+   LIGHT THEME (default — "Porcelain")
+   ============================================================ */
 :root {
-  /* Surfaces & Neutrals */
-  --bg-base: #080808;
-  --bg-surface: #101010;
-  --bg-surface-elevated: #161616;
-  --bg-surface-hover: #1c1c1c;
-  
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
+  color-scheme: light;
 
-  /* Primary Brand & Secondary Accents */
-  --accent-brand: #D4A359;
-  --accent-brand-hover: #E5B86E;
-  --accent-secondary: #4D88C7;
-  --accent-secondary-hover: #629BD8;
-  
-  /* Text Neutrals */
-  --text-primary: #F0F6FC;
-  --text-secondary: #C9D1D9;
-  --text-muted: #8B949E;
-  
-  /* Severity Urgency Hierarchy (Highest Saturation in UI) */
-  --sev-critical: #F04438;
-  --sev-high: #F38744;
-  --sev-medium: #EAAA08;
-  --sev-low: #717BBC;
+  /* Surfaces */
+  --bg-canvas:       #F7F6F3;
+  --bg-surface:      #FFFFFF;
+  --bg-raised:       #FFFFFF;
+  --bg-subtle:       #EFEDE8;
+  --border-hairline:  #E1DED7;
+  --border-strong:    #8C887E;
 
-  /* 4-Zone Telemetry Chart Palette */
-  --zone-restroom-a: #5B8DEF;
-  --zone-restroom-b: #3EA882;
-  --zone-family-room: #E09F3E;
-  --zone-staff-wc: #9D7FE3;
+  /* Text */
+  --text-1: #1A1917;
+  --text-2: #4A4740;
+  --text-3: #6B675E;
+  --on-ink: #FFFFFF;
+  --ink:    #1A1917;
 
-  /* Anomaly Metadata Category Tags (Neutral) */
-  --tag-bg: #1A2332;
-  --tag-text: #7C95B6;
-  --tag-border: #2D3B4E;
+  /* Accent — brass (one only) */
+  --accent-text: #7A5A1E;
+  --accent-ring: #A8761F;
+  --accent-tint: #F6EEDC;
 
-  /* Sustainability & Conservation Metrics */
-  --eco-saved: #2EB88A;
+  /* Status — Critical */
+  --critical-fg:    #B42318;
+  --critical-tint:  #FEF0EE;
+  --critical-solid: #D92D20;
+
+  /* Status — Warning */
+  --warning-fg:    #9A4A06;
+  --warning-tint:  #FFF3E0;
+  --warning-solid: #DC6803;
+
+  /* Status — Healthy */
+  --healthy-fg:    #067647;
+  --healthy-tint:  #E8F6EE;
+  --healthy-solid: #12B76A;
+
+  /* Status — Info */
+  --info-fg:    #175CD3;
+  --info-tint:  #EAF2FE;
+  --info-solid: #2E90FA;
+
+  /* Chart — categorical palette (zones, inside charts only) */
+  --chart-zone-a: #0072B2;
+  --chart-zone-b: #B5558C;
+  --chart-zone-c: #B87800;
+  --chart-zone-d: #3A9AD0;
+
+  /* Heatmap — sequential scale (8 stops, low → high) */
+  --heatmap-1: #EEF3F6;
+  --heatmap-2: #CFE1EA;
+  --heatmap-3: #A6C9DA;
+  --heatmap-4: #77AECB;
+  --heatmap-5: #4A8FB8;
+  --heatmap-6: #2B6E9A;
+  --heatmap-7: #174E78;
+  --heatmap-8: #0C3556;
+
+  /* Shadows */
+  --shadow-1: 0 1px 2px rgb(26 25 23 / 0.06);
+  --shadow-2: 0 4px 16px rgb(26 25 23 / 0.10);
+  --shadow-3: 0 16px 48px rgb(26 25 23 / 0.16);
 }
 
-/* Centralized background tokens enforcement across all views */
-.bg-page,
-.bg-\[\#080808\],
-.bg-\[\#0B0F14\],
-.bg-\[\#0D1117\] {
-  background-color: #080808 !important;
+/* ============================================================
+   DARK THEME ("Warm Graphite" — NOT blue-black)
+   ============================================================ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Dark-only extra neutrals */
+  --n-950: #121211;
+  --n-875: #24231F;
+  --n-825: #34322D;
+
+  /* Surfaces */
+  --bg-canvas:       #121211;
+  --bg-surface:      #1A1917;
+  --bg-raised:       #24231F;
+  --bg-subtle:       #24231F;
+  --border-hairline:  #34322D;
+  --border-strong:    #6B675E;
+
+  /* Text */
+  --text-1: #F2F0EB;
+  --text-2: #BDB9AF;
+  --text-3: #9A968C;
+  --on-ink: #121211;
+  --ink:    #F2F0EB;
+
+  /* Accent — brass */
+  --accent-text: #D9AE68;
+  --accent-ring: #D9AE68;
+  --accent-tint: #2E2616;
+
+  /* Status — Critical */
+  --critical-fg:    #FF8F85;
+  --critical-tint:  #3A1E1B;
+  --critical-solid: #F97066;
+
+  /* Status — Warning */
+  --warning-fg:    #F5B04A;
+  --warning-tint:  #33260F;
+  --warning-solid: #F79009;
+
+  /* Status — Healthy */
+  --healthy-fg:    #4CC38A;
+  --healthy-tint:  #142A1F;
+  --healthy-solid: #32D583;
+
+  /* Status — Info */
+  --info-fg:    #8AB8FF;
+  --info-tint:  #16243B;
+  --info-solid: #53B1FD;
+
+  /* Chart — categorical palette (zones, dark) */
+  --chart-zone-a: #56A8E0;
+  --chart-zone-b: #E59BC4;
+  --chart-zone-c: #F0B84A;
+  --chart-zone-d: #9AD3F2;
+
+  /* Heatmap — sequential scale (dark, lightness rises with value) */
+  --heatmap-1: #1B2430;
+  --heatmap-2: #20405A;
+  --heatmap-3: #25607F;
+  --heatmap-4: #2F82A5;
+  --heatmap-5: #4FA5C7;
+  --heatmap-6: #86C7DD;
+  --heatmap-7: #C4E6F0;
+  --heatmap-8: #F0FAFD;
+
+  /* Shadows — same shapes, higher opacity */
+  --shadow-1: 0 1px 2px rgb(26 25 23 / 0.24);
+  --shadow-2: 0 4px 16px rgb(26 25 23 / 0.40);
+  --shadow-3: 0 16px 48px rgb(26 25 23 / 0.64);
 }
 
-.bg-surface,
-.bg-\[\#101010\],
-.bg-\[\#0F141D\],
-.bg-\[\#141A22\] {
-  background-color: #101010 !important;
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+*,
+*::before,
+*::after {
+  border-color: var(--border-hairline);
 }
 
 body {
-  background-color: var(--bg-base);
-  color: var(--text-primary);
-  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--bg-canvas);
+  color: var(--text-1);
+  font-family: var(--font-sans);
+  font-feature-settings: "kern" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
 }
 
-/* Custom sleek scrollbar */
+/* Respect prefers-reduced-motion across all transitions & animations */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Selection */
+::selection {
+  background-color: var(--accent-tint);
+  color: var(--text-1);
+}
+
+/* ---- Focus ---- */
+:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 2px;
+}
+
+/* ---- Skip link ---- */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 100;
+  padding: 0.5rem 1rem;
+  background: var(--bg-surface);
+  color: var(--text-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+  width: auto;
+  height: auto;
+}
+
+/* ---- Tabular numbers ---- */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "zero" 0;
+}
+
+/* ============================================================
+   TYPOGRAPHY CLASSES
+   ============================================================ */
+.metric-hero {
+  font-size: 3rem;         /* 48px */
+  line-height: 3.25rem;    /* 52px */
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-lg {
+  font-size: 2rem;         /* 32px */
+  line-height: 2.25rem;    /* 36px */
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  font-variant-numeric: tabular-nums;
+}
+
+.text-h1 {
+  font-size: 1.75rem;      /* 28px */
+  line-height: 2.25rem;    /* 36px */
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.text-h2 {
+  font-size: 1.25rem;      /* 20px */
+  line-height: 1.75rem;    /* 28px */
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.text-h3 {
+  font-size: 1rem;         /* 16px */
+  line-height: 1.5rem;     /* 24px */
+  font-weight: 600;
+}
+
+.text-body {
+  font-size: 0.875rem;     /* 14px */
+  line-height: 1.375rem;   /* 22px */
+  font-weight: 400;
+}
+
+.text-body-lg {
+  font-size: 1rem;         /* 16px */
+  line-height: 1.5rem;     /* 24px */
+  font-weight: 400;
+}
+
+.text-label {
+  font-size: 0.75rem;      /* 12px */
+  line-height: 1rem;       /* 16px */
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.text-caption {
+  font-size: 0.75rem;      /* 12px */
+  line-height: 1rem;       /* 16px */
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.text-eyebrow {
+  font-size: 0.75rem;      /* 12px */
+  line-height: 1rem;       /* 16px */
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ============================================================
+   SCROLLBAR (token-based)
+   ============================================================ */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
-  background: var(--bg-base);
+  background: var(--bg-canvas);
 }
+
 ::-webkit-scrollbar-thumb {
-  background: #242D3A;
+  background: var(--border-hairline);
   border-radius: 3px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #3A4657;
+  background: var(--border-strong);
 }
 
-.glow-brass {
-  box-shadow: 0 0 20px -5px rgba(212, 163, 89, 0.18);
+/* ============================================================
+   SKELETON SHIMMER
+   ============================================================ */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
-.glow-steel {
-  box-shadow: 0 0 20px -5px rgba(77, 136, 199, 0.18);
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-subtle) 25%,
+    var(--bg-canvas) 50%,
+    var(--bg-subtle) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .skeleton {
+    animation: none;
+    background: var(--bg-subtle);
+  }
+}
+
+/* ============================================================
+   PROSE / RUNNING TEXT
+   ============================================================ */
+.prose-constrained {
+  max-width: 68ch;
 }

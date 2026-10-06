@@ -1,133 +1,152 @@
 "use client";
 
-import React from "react";
-import { Activity, AlertTriangle, Droplets, HeartPulse, Leaf } from "lucide-react";
+import { Stat, StatStrip } from "@/components/ui/Stat";
+import { SkeletonMetricHero, SkeletonMetricLg } from "@/components/ui/Skeleton";
 import { OverviewMetrics, FacilityHealthSummary, CarbonSummary } from "./types";
+import { formatNumber } from "@/lib/format";
 
 interface MetricCardsProps {
   metrics: OverviewMetrics | null;
   healthSummary?: FacilityHealthSummary | null;
   carbonSummary?: CarbonSummary | null;
   loading: boolean;
+  onNavigateTab?: (tab: "dashboard" | "tickets" | "sustainability" | "health" | "hygiene" | "carbon" | "sensors") => void;
 }
 
-export function MetricCards({ metrics, healthSummary, carbonSummary, loading }: MetricCardsProps) {
-  const readingsCount = metrics ? metrics.sensor_readings_count.toLocaleString() : "...";
-  const ticketsCount = metrics ? metrics.total_tickets_count : 0;
-  const openTickets = metrics ? metrics.open_tickets_count : 0;
-  const waterLoss = metrics ? `${metrics.estimated_water_loss_liters.toFixed(1)} L` : "0.0 L";
-  const costImpact = metrics ? `₹${metrics.estimated_cost_impact_inr.toFixed(2)}` : "₹0.00";
+/**
+ * Dashboard Stat Strip:
+ * Hero = Open tickets (metric-hero)
+ * Secondary = Facility health, Water lost, Carbon footprint
+ * Caption = Sensor readings analysed (quiet system info)
+ */
+export function MetricCards({
+  metrics,
+  healthSummary,
+  carbonSummary,
+  loading,
+  onNavigateTab,
+}: MetricCardsProps) {
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        <StatStrip>
+          <div className="space-y-2">
+            <span className="text-xs text-[var(--text-3)]">Open tickets</span>
+            <SkeletonMetricHero />
+          </div>
+          <div className="space-y-2">
+            <span className="text-xs text-[var(--text-3)]">Facility health index</span>
+            <SkeletonMetricLg />
+          </div>
+          <div className="space-y-2">
+            <span className="text-xs text-[var(--text-3)]">Water lost</span>
+            <SkeletonMetricLg />
+          </div>
+          <div className="space-y-2">
+            <span className="text-xs text-[var(--text-3)]">Carbon emissions</span>
+            <SkeletonMetricLg />
+          </div>
+        </StatStrip>
+      </div>
+    );
+  }
 
-  // Health Score from Predictive Health Engine
-  const healthAvg = healthSummary?.average_health_score !== undefined
-    ? healthSummary.average_health_score.toFixed(1)
-    : "91.9";
+  const openTickets = metrics?.open_tickets_count ?? 0;
+  const totalTickets = metrics?.total_tickets_count ?? 0;
+
+  const healthScore =
+    healthSummary?.average_health_score !== undefined
+      ? healthSummary.average_health_score.toFixed(0)
+      : "92";
   const healthyCount = healthSummary?.healthy_count ?? 15;
   const totalFixtures = healthSummary?.total_fixtures ?? 17;
-  const atRiskCount = (healthSummary?.high_risk_count ?? 2) + (healthSummary?.degrading_count ?? 0);
+  const atRiskCount =
+    (healthSummary?.high_risk_count ?? 2) +
+    (healthSummary?.degrading_count ?? 0);
 
-  const carbonTotal = carbonSummary ? `${carbonSummary.carbon_total_kg.toFixed(2)} kg` : "9.53 kg";
-  const carbonDelta = carbonSummary
-    ? `${Math.abs(carbonSummary.vs_benchmark_pct).toFixed(1)}% below baseline`
-    : "-35.2% below baseline";
+  const waterLostLiters = metrics
+    ? formatNumber(Math.round(metrics.estimated_water_loss_liters))
+    : "0";
+  const costImpact = metrics
+    ? `₹${formatNumber(Math.round(metrics.estimated_cost_impact_inr))} cost sustainability`
+    : "₹0 cost sustainability";
+
+  const carbonKg = carbonSummary
+    ? carbonSummary.carbon_total_kg.toFixed(1)
+    : "9.5";
+
+  const readingsCount = metrics
+    ? formatNumber(metrics.sensor_readings_count)
+    : "1,204,331";
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-      {/* 1. Sensor Readings */}
-      <div className="bg-[#101010] rounded-md p-4.5 transition-all shadow-sm">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-[#8B949E] uppercase tracking-wider">Sensor Readings</span>
-          <div className="h-8 w-8 rounded-lg bg-[#4D88C7]/15 border border-[#4D88C7]/30 flex items-center justify-center text-[#4D88C7]">
-            <Activity className="h-4 w-4" />
-          </div>
+    <div className="space-y-3">
+      <StatStrip>
+        {/* 1. Hero: Open Tickets */}
+        <div
+          onClick={() => onNavigateTab?.("tickets")}
+          className={onNavigateTab ? "cursor-pointer hover:opacity-90 transition-opacity" : undefined}
+        >
+          <Stat
+            hero
+            label="Open tickets"
+            value={openTickets}
+            context={`of ${totalTickets} flagged incidents`}
+            delta={
+              openTickets > 0
+                ? {
+                    value: "Action needed",
+                    direction: "up",
+                    sentiment: "negative",
+                  }
+                : {
+                    value: "All resolved",
+                    direction: "down",
+                    sentiment: "positive",
+                  }
+            }
+          />
         </div>
-        <div className="mt-3">
-          <div className="text-2xl font-bold text-[#F0F6FC] tracking-tight font-mono">
-            {loading ? "..." : readingsCount}
-          </div>
-          <p className="text-xs text-[#8B949E] mt-1">
-            1-min telemetry rate per fixture
-          </p>
-        </div>
-      </div>
 
-      {/* 2. Flagged Anomaly Tickets */}
-      <div className="bg-[#101010] rounded-md p-4.5 transition-all shadow-sm">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-[#8B949E] uppercase tracking-wider">Flagged Tickets</span>
-          <div className="h-8 w-8 rounded-lg bg-[#F38744]/15 border border-[#F38744]/30 flex items-center justify-center text-[#F38744]">
-            <AlertTriangle className="h-4 w-4" />
-          </div>
+        {/* 2. Facility Health Index */}
+        <div
+          onClick={() => onNavigateTab?.("health")}
+          className={onNavigateTab ? "cursor-pointer hover:opacity-90 transition-opacity" : undefined}
+        >
+          <Stat
+            label="Facility health index"
+            value={healthScore}
+            unit="/ 100"
+            context={`${healthyCount}/${totalFixtures} optimal · ${atRiskCount} at risk`}
+          />
         </div>
-        <div className="mt-3 flex items-baseline justify-between">
-          <div>
-            <div className="text-2xl font-bold text-[#F0F6FC] tracking-tight font-mono">
-              {loading ? "..." : ticketsCount}
-            </div>
-            <p className="text-xs text-[#8B949E] mt-1">
-              {openTickets > 0 ? "Unresolved incidents requiring attention" : "All incidents resolved"}
-            </p>
-          </div>
-          {openTickets > 0 && (
-            <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-[#F38744]/15 border border-[#F38744]/30 text-[#F38744]">
-              Action Needed
-            </span>
-          )}
-        </div>
-      </div>
 
-      {/* 3. Facility Health Index (Upgraded from static Monitored Zones) */}
-      <div className="bg-[#101010] rounded-md p-4.5 transition-all shadow-sm">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-[#8B949E] uppercase tracking-wider">Facility Health Index</span>
-          <div className="h-8 w-8 rounded-lg bg-[#2EB88A]/15 border border-[#2EB88A]/30 flex items-center justify-center text-[#2EB88A]">
-            <HeartPulse className="h-4 w-4" />
-          </div>
-        </div>
-        <div className="mt-3">
-          <div className="text-2xl font-bold text-[#F0F6FC] tracking-tight font-mono">
-            {loading ? "..." : healthAvg} <span className="text-xs font-normal text-[#8B949E]">/ 100</span>
-          </div>
-          <p className="text-xs text-[#8B949E] mt-1">
-            <span className="text-[#F0F6FC] font-semibold">{healthyCount}/{totalFixtures} optimal</span> · {atRiskCount} at risk
-          </p>
-        </div>
-      </div>
+        {/* 3. Water Lost */}
+        <Stat
+          label="Water lost"
+          value={waterLostLiters}
+          unit="L"
+          context={costImpact}
+        />
 
-      {/* 4. Estimated Water Loss */}
-      <div className="bg-[#101010] rounded-md p-4.5 transition-all shadow-sm">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-[#8B949E] uppercase tracking-wider">Estimated Water Loss</span>
-          <div className="h-8 w-8 rounded-lg bg-[#4D88C7]/15 border border-[#4D88C7]/30 flex items-center justify-center text-[#4D88C7]">
-            <Droplets className="h-4 w-4" />
-          </div>
+        {/* 4. Carbon */}
+        <div
+          onClick={() => onNavigateTab?.("carbon")}
+          className={onNavigateTab ? "cursor-pointer hover:opacity-90 transition-opacity" : undefined}
+        >
+          <Stat
+            label="Carbon"
+            value={carbonKg}
+            unit="kg CO₂e"
+            context="7-day operational model"
+          />
         </div>
-        <div className="mt-3">
-          <div className="text-2xl font-bold text-[#F0F6FC] tracking-tight font-mono">
-            {loading ? "..." : waterLoss}
-          </div>
-          <p className="text-xs text-[#8B949E] mt-1">
-            Utility Cost Impact: <span className="text-[#F0F6FC] font-medium">{costImpact}</span>
-          </p>
-        </div>
-      </div>
+      </StatStrip>
 
-      {/* 5. Estimated Carbon Footprint */}
-      <div className="bg-[#101010] rounded-md p-4.5 transition-all shadow-sm">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-[#8B949E] uppercase tracking-wider">Carbon Footprint</span>
-          <div className="h-8 w-8 rounded-lg bg-[#2EB88A]/15 border border-[#2EB88A]/30 flex items-center justify-center text-[#2EB88A]">
-            <Leaf className="h-4 w-4" />
-          </div>
-        </div>
-        <div className="mt-3">
-          <div className="text-2xl font-bold text-[#F0F6FC] tracking-tight font-mono">
-            {loading ? "..." : carbonTotal} <span className="text-xs font-normal text-[#8B949E]">CO₂e</span>
-          </div>
-          <p className="text-xs text-[#2EB88A] font-medium mt-1">
-            {carbonDelta}
-          </p>
-        </div>
+      {/* Quiet system info caption */}
+      <div className="px-1 text-xs text-[var(--text-3)] font-mono flex items-center justify-between border-t border-[var(--border-hairline)]/50 pt-2">
+        <span>{readingsCount} sensor telemetry readings analysed</span>
+        <span>1-min sampling rate · 17 smart fixtures</span>
       </div>
     </div>
   );

@@ -1,16 +1,20 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { Play, Pause, RotateCcw, FastForward, Clock } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Play, Pause, RotateCcw } from "lucide-react";
+import { cn } from "@/lib/cn";
+import { Button } from "@/components/ui/Button";
+import { formatDateTime } from "@/lib/format";
 
-interface ReplayScrubberProps {
+export interface ReplayScrubberProps {
   simStart: string;
   simDurationHours: number;
   currentHours: number;
-  onChangeHours: React.Dispatch<React.SetStateAction<number>>;
+  onChangeHours: (hours: number | ((prev: number) => number)) => void;
   isPlaying: boolean;
   onTogglePlay: () => void;
   onReset: () => void;
+  className?: string;
 }
 
 export function ReplayScrubber({
@@ -21,21 +25,22 @@ export function ReplayScrubber({
   isPlaying,
   onTogglePlay,
   onReset,
+  className,
 }: ReplayScrubberProps) {
-  const [speed, setSpeed] = useState<number>(2); // hours per second
+  const [speed, setSpeed] = useState<number>(2);
 
   // Playback timer effect
   useEffect(() => {
     if (!isPlaying) return;
 
-    const intervalMs = 500;
+    const intervalMs = 250;
     const increment = (speed * intervalMs) / 1000;
 
     const timer = setInterval(() => {
-      onChangeHours((prev) => {
+      onChangeHours((prev: number) => {
         const next = prev + increment;
         if (next >= simDurationHours) {
-          onTogglePlay(); // stop at end
+          onTogglePlay();
           return simDurationHours;
         }
         return next;
@@ -46,54 +51,67 @@ export function ReplayScrubber({
   }, [isPlaying, speed, simDurationHours, onChangeHours, onTogglePlay]);
 
   // Compute simulated timestamp from currentHours
-  const getSimulatedDate = () => {
-    const startDate = new Date(simStart || "2024-01-15T00:00:00");
+  const currentTimestamp = () => {
+    const startDate = new Date(simStart || "2024-10-02T00:00:00");
     const d = new Date(startDate.getTime() + currentHours * 3600 * 1000);
-    return d.toLocaleString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
+    return formatDateTime(d);
   };
 
-  const progressPercent = Math.min(100, Math.round((currentHours / simDurationHours) * 100));
+  const progressPercent = Math.min(
+    100,
+    Math.round((currentHours / simDurationHours) * 100)
+  );
 
   return (
-    <div className="bg-[#101010] rounded-md p-5 shadow-lg">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
-        {/* Controls: Play, Reset, Speed */}
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            id="btn-replay-play"
+    <div
+      className={cn(
+        "rounded-[var(--r-md)] border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 flex flex-col gap-3",
+        className
+      )}
+    >
+      {/* Top row: controls and timestamp */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          {/* Ink-filled primary play/pause */}
+          <Button
+            variant="primary"
+            size="sm"
             onClick={onTogglePlay}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-[#D4A359] text-black hover:bg-[#D4A359]/90 shadow-md transition-all"
+            id="btn-replay-play"
+            className="gap-1.5"
           >
-            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
-            <span>{isPlaying ? "Pause" : "Play Simulation"}</span>
-          </button>
+            {isPlaying ? (
+              <Pause className="h-4 w-4" />
+            ) : (
+              <Play className="h-4 w-4 fill-current" />
+            )}
+            <span>{isPlaying ? "Pause" : "Play"}</span>
+          </Button>
 
-          <button
-            id="btn-replay-reset"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onReset}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-[#080808] hover:bg-white/10 text-[#8B949E] hover:text-[#F0F6FC] border border-white/10 transition-all"
+            id="btn-replay-reset"
+            className="gap-1 text-xs"
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            <span>Reset (00:00)</span>
-          </button>
+            <span>Reset</span>
+          </Button>
 
-          {/* Speed Pills */}
-          <div className="flex items-center bg-[#080808] p-1 rounded-lg border border-white/[0.08]">
-            <span className="text-[10px] text-[#8B949E] px-2 font-medium">Speed:</span>
-            {[0.5, 1, 2, 4, 8].map((s) => (
+          {/* Speed picker */}
+          <div className="flex items-center rounded-[var(--r-sm)] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-0.5 text-xs">
+            {[1, 2, 4, 8].map((s) => (
               <button
                 key={s}
+                type="button"
                 onClick={() => setSpeed(s)}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all ${
-                  speed === s ? "bg-[#1B222C] text-[#D4A359] font-bold" : "text-[#8B949E] hover:text-[#F0F6FC]"
-                }`}
+                className={cn(
+                  "px-2 py-0.5 rounded-[var(--r-sm)] font-medium transition-colors cursor-pointer select-none",
+                  speed === s
+                    ? "bg-[var(--bg-surface)] text-[var(--text-1)] shadow-sm font-semibold"
+                    : "text-[var(--text-3)] hover:text-[var(--text-1)]"
+                )}
               >
                 {s}x
               </button>
@@ -101,56 +119,30 @@ export function ReplayScrubber({
           </div>
         </div>
 
-        {/* Current Simulated Clock */}
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <span className="text-[10px] uppercase tracking-wider text-[#8B949E] block">
-              Simulated Replay Clock
-            </span>
-            <div className="text-lg font-mono font-bold text-[#D4A359] flex items-center gap-1.5 justify-end">
-              <Clock className="h-4 w-4" />
-              <span>{getSimulatedDate()}</span>
-            </div>
-          </div>
-          <div className="px-2.5 py-1 rounded bg-white/[0.04] border border-white/10 text-xs font-mono text-[#F0F6FC]">
-            {progressPercent}%
-          </div>
+        {/* Readout */}
+        <div className="flex items-baseline gap-2 font-mono text-xs">
+          <span className="text-[var(--text-3)] font-sans">Simulated Time:</span>
+          <span className="font-semibold text-[var(--text-1)] tabular-nums num text-sm">
+            {currentTimestamp()}
+          </span>
+          <span className="text-[var(--text-3)] tabular-nums">
+            ({Math.round(currentHours)}h / {simDurationHours}h · {progressPercent}%)
+          </span>
         </div>
       </div>
 
-      {/* Scrubbing Slider Track */}
-      <div className="space-y-1.5">
+      {/* Scrubber slider: min 44px touch target */}
+      <div className="relative py-2 flex items-center">
         <input
           type="range"
-          min="0"
+          min={0}
           max={simDurationHours}
-          step="0.1"
+          step={0.1}
           value={currentHours}
           onChange={(e) => onChangeHours(parseFloat(e.target.value))}
-          className="w-full h-2 bg-[#080808] rounded-lg appearance-none cursor-pointer accent-[#D4A359]"
+          className="w-full h-2 rounded-lg bg-[var(--bg-subtle)] appearance-none cursor-pointer accent-[var(--accent-ring)]"
+          aria-label="Replay simulation timeline scrubber"
         />
-        <div className="flex justify-between text-[10px] text-[#8B949E] font-mono">
-          {simDurationHours >= 168 ? (
-            <>
-              <button onClick={() => onChangeHours(0)} className="hover:text-[#5B8DEF] transition-colors focus:outline-none">0h (D1)</button>
-              <button onClick={() => onChangeHours(24)} className="hover:text-[#5B8DEF] transition-colors focus:outline-none">24h (D2)</button>
-              <button onClick={() => onChangeHours(48)} className="hover:text-[#5B8DEF] transition-colors focus:outline-none">48h (D3)</button>
-              <button onClick={() => onChangeHours(72)} className="hover:text-[#5B8DEF] transition-colors focus:outline-none">72h (D4)</button>
-              <button onClick={() => onChangeHours(96)} className="hover:text-[#5B8DEF] transition-colors focus:outline-none">96h (D5)</button>
-              <button onClick={() => onChangeHours(120)} className="hover:text-[#5B8DEF] transition-colors focus:outline-none">120h (D6)</button>
-              <button onClick={() => onChangeHours(144)} className="hover:text-[#5B8DEF] transition-colors focus:outline-none">144h (D7)</button>
-              <button onClick={() => onChangeHours(168)} className="hover:text-[#5B8DEF] transition-colors focus:outline-none">168h</button>
-            </>
-          ) : (
-            <>
-              <span>0h (Mon 00:00)</span>
-              <span>12h (Mon 12:00)</span>
-              <span>24h (Tue 00:00)</span>
-              <span>36h (Tue 12:00)</span>
-              <span>48h (Wed 00:00)</span>
-            </>
-          )}
-        </div>
       </div>
     </div>
   );

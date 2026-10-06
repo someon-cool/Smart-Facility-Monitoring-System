@@ -1,12 +1,11 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import { Header } from "@/components/Header";
+import { AppShell } from "@/components/shell/AppShell";
 import { MetricCards } from "@/components/MetricCards";
 import { SustainabilityPanel } from "@/components/SustainabilityPanel";
 import { FixtureHealthView } from "@/components/FixtureHealthView";
 import { HygieneView } from "@/components/HygieneView";
-import { CarbonBreakdownCard } from "@/components/CarbonBreakdownCard";
 import { CarbonView } from "@/components/CarbonView";
 import { SensorIntelligenceSection } from "@/components/SensorIntelligenceSection";
 import { FlowRateChart } from "@/components/FlowRateChart";
@@ -14,6 +13,10 @@ import { OccupancyHeatmap } from "@/components/OccupancyHeatmap";
 import { TicketsView } from "@/components/TicketsView";
 import { ReplayScrubber } from "@/components/ReplayScrubber";
 import { AiCopilotDrawer } from "@/components/AiCopilotDrawer";
+import { CopilotPanel } from "@/components/copilot/CopilotPanel";
+import { AttentionBand } from "@/components/dashboard/AttentionBand";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { formatDateTime } from "@/lib/format";
 import {
   OverviewMetrics,
   Reading,
@@ -213,7 +216,7 @@ export default function DashboardPage() {
 
   // Replay Simulator: Filtered data according to replayHours
   const replayCutoffDate = useMemo(() => {
-    if (!metrics?.sim_start) return new Date("2024-01-15T00:00:00");
+    if (!metrics?.sim_start) return new Date("2024-10-02T00:00:00");
     const start = new Date(metrics.sim_start);
     return new Date(start.getTime() + replayHours * 3600 * 1000);
   }, [metrics?.sim_start, replayHours]);
@@ -254,21 +257,31 @@ export default function DashboardPage() {
   }, [viewMode, metrics, activeTickets, replayHours]);
 
   const openTicketsCount = activeTickets.filter((t) => t.status !== "resolved").length;
-  const hygieneAlertCount = (hygieneSummary?.critical_zones_count ?? 0) + (hygieneSummary?.attention_zones_count ?? 0);
+  const hasCriticalTickets = activeTickets.some(
+    (t) =>
+      t.status !== "resolved" &&
+      (t.severity_label?.toLowerCase() === "critical" ||
+        t.severity_label?.toLowerCase() === "high")
+  );
+  const hygieneAlertCount =
+    (hygieneSummary?.critical_zones_count ?? 0) + (hygieneSummary?.attention_zones_count ?? 0);
+  const hasCriticalHygiene = (hygieneSummary?.critical_zones_count ?? 0) > 0;
 
   return (
-    <div className="min-h-screen bg-[#080808] text-[#F0F6FC] flex flex-col font-sans selection:bg-[#D4A359]/30">
-      {/* 1. Executive Brand Header */}
-      <Header
+    <>
+      <AppShell
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        openCopilot={() => setIsCopilotOpen(true)}
+        onSelectTab={setActiveTab}
         openTicketsCount={openTicketsCount}
+        hasCriticalTickets={hasCriticalTickets}
         hygieneAlertCount={hygieneAlertCount}
-      />
-
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-8">
+        hasCriticalHygiene={hasCriticalHygiene}
+        onOpenCopilot={() => setIsCopilotOpen(true)}
+        copilotOpen={isCopilotOpen}
+        copilotPanel={
+          <CopilotPanel onClose={() => setIsCopilotOpen(false)} />
+        }
+      >
         {activeTab === "tickets" && (
           <TicketsView
             tickets={tickets}
@@ -278,7 +291,11 @@ export default function DashboardPage() {
         )}
 
         {activeTab === "sustainability" && (
-          <SustainabilityPanel summary={sustainability} loading={loading} />
+          <SustainabilityPanel
+            summary={sustainability}
+            loading={loading}
+            onSwitchView={(v) => setActiveTab(v)}
+          />
         )}
 
         {activeTab === "health" && (
@@ -301,7 +318,11 @@ export default function DashboardPage() {
         )}
 
         {activeTab === "carbon" && (
-          <CarbonView summary={carbonSummary} loading={loading} />
+          <CarbonView
+            summary={carbonSummary}
+            loading={loading}
+            onSwitchView={(v) => setActiveTab(v)}
+          />
         )}
 
         {activeTab === "sensors" && (
@@ -313,32 +334,53 @@ export default function DashboardPage() {
         )}
 
         {activeTab === "dashboard" && (
-          <div className="space-y-8">
-            {/* 1. Top-Level Metric Cards (5 cards) */}
+          <div className="space-y-6">
+            {/* Header sub-row: Time context & Replay Mode toggle */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-[var(--border-hairline)]">
+              <div>
+                <span className="text-xs text-[var(--text-3)] font-mono">
+                  Terminal 2 · Data as of{" "}
+                  {metrics?.sim_end
+                    ? formatDateTime(metrics.sim_end)
+                    : "8 Oct 2024, 23:59"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <SegmentedControl
+                  value={viewMode}
+                  onValueChange={(val) => {
+                    const mode = val as "full" | "replay";
+                    setViewMode(mode);
+                    if (mode === "replay") {
+                      setIsPlaying(false);
+                    }
+                  }}
+                  items={[
+                    { value: "full", label: "Full dataset" },
+                    { value: "replay", label: "Simulation replay" },
+                  ]}
+                />
+              </div>
+            </div>
+
+            {/* 1. Attention now band (Hero Card) */}
+            <AttentionBand
+              tickets={activeTickets}
+              hygieneSummary={hygieneSummary}
+              fixtureHealth={fixtureHealth}
+              onNavigateTab={setActiveTab}
+            />
+
+            {/* 2. Stat strip (Flat KPI metrics) */}
             <MetricCards
               metrics={activeMetrics}
               healthSummary={healthSummary}
               carbonSummary={carbonSummary}
               loading={loading}
+              onNavigateTab={setActiveTab}
             />
 
-            {/* Replay Scrubber Banner (if replay mode, directly above Flow Rate Telemetry Chart) */}
-            {viewMode === "replay" && (
-              <ReplayScrubber
-                simStart={metrics?.sim_start || "2024-01-15T00:00:00"}
-                simDurationHours={metrics?.sim_duration_hours || 168}
-                currentHours={replayHours}
-                onChangeHours={setReplayHours}
-                isPlaying={isPlaying}
-                onTogglePlay={() => setIsPlaying(!isPlaying)}
-                onReset={() => {
-                  setIsPlaying(false);
-                  setReplayHours(0);
-                }}
-              />
-            )}
-
-            {/* 2. Flow Rate Telemetry Chart (Recharts) with Full Dataset / Replay controls */}
+            {/* 3. Flow Telemetry Chart */}
             <FlowRateChart
               readings={readings}
               zoneTotals={zoneTotals}
@@ -356,31 +398,35 @@ export default function DashboardPage() {
               onJumpReplayHours={setReplayHours}
             />
 
-            {/* 3. Occupancy Heatmap (17 fixtures x 24h) */}
-            <OccupancyHeatmap data={heatmapData} loading={loading} />
+            {/* Replay Scrubber: flat inline directly UNDER the flow chart when in Replay */}
+            {viewMode === "replay" && (
+              <ReplayScrubber
+                simStart={metrics?.sim_start || "2024-10-02T00:00:00"}
+                simDurationHours={metrics?.sim_duration_hours || 168}
+                currentHours={replayHours}
+                onChangeHours={setReplayHours}
+                isPlaying={isPlaying}
+                onTogglePlay={() => setIsPlaying(!isPlaying)}
+                onReset={() => {
+                  setIsPlaying(false);
+                  setReplayHours(0);
+                }}
+              />
+            )}
 
-            {/* 4. Estimated Carbon Footprint & Contributor Breakdown Banner (Placed below the graphs) */}
-            <CarbonBreakdownCard
-              summary={carbonSummary}
-              loading={loading}
-              onExploreMore={() => setActiveTab("carbon")}
-            />
+            {/* 4. Occupancy Heatmap */}
+            <OccupancyHeatmap data={heatmapData} loading={loading} />
           </div>
         )}
-      </main>
+      </AppShell>
 
-      {/* AI Copilot Slide-out Sheet Drawer */}
-      <AiCopilotDrawer
-        isOpen={isCopilotOpen}
-        onClose={() => setIsCopilotOpen(false)}
-      />
-
-      {/* Footer */}
-      <footer className="border-t border-white/[0.08] bg-[#101010] py-4 text-center text-xs text-[#8B949E]">
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-center text-center">
-          <span>KOHLER Facility Monitor · Airport Restroom Operations Platform</span>
-        </div>
-      </footer>
-    </div>
+      {/* AI Copilot Slide-out Sheet Drawer for screens < 1280px */}
+      <div className="xl:hidden">
+        <AiCopilotDrawer
+          isOpen={isCopilotOpen}
+          onClose={() => setIsCopilotOpen(false)}
+        />
+      </div>
+    </>
   );
 }

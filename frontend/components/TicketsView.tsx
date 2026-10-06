@@ -1,27 +1,38 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import { Fragment, useState, useMemo, type FormEvent, type KeyboardEvent } from "react";
 import {
-  AlertTriangle,
-  AlertCircle,
-  CheckCircle2,
-  Wrench,
-  Sparkles,
-  ChevronDown,
-  ChevronUp,
-  Filter,
-  Eye,
-  EyeOff,
-  Check,
-  X,
-  FileText,
-  SlidersHorizontal,
-  TrendingDown,
-} from "lucide-react";
-import { Ticket } from "./types";
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/Table";
+import { Badge } from "@/components/ui/Badge";
+import { SeverityMark, type Severity } from "@/components/ui/SeverityMark";
+import { Button } from "@/components/ui/Button";
+import { Toolbar, ToolbarSpacer } from "@/components/ui/Toolbar";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { Select } from "@/components/ui/Select";
+import { CopyableId } from "@/components/ui/CopyableId";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/Dialog";
+import { Disclosure } from "@/components/ui/Disclosure";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { EvidencePanel } from "./EvidencePanel";
+import { Ticket } from "./types";
+import { getZoneLabel } from "@/lib/names";
+import { formatDateTime } from "@/lib/format";
+import { Sparkles, CheckCircle2, ChevronRight, ChevronDown } from "lucide-react";
 
-interface TicketsViewProps {
+export interface TicketsViewProps {
   tickets: Ticket[];
   onStatusChange: (
     ticketId: string,
@@ -31,635 +42,610 @@ interface TicketsViewProps {
   loading: boolean;
 }
 
-const SEVERITY_ORDER: Record<string, number> = {
+const SEVERITY_RANKS: Record<string, number> = {
   critical: 1,
   high: 2,
   medium: 3,
   low: 4,
 };
 
-const ZONE_LABELS: Record<string, string> = {
-  T2_Restroom_A: "Restroom A (Departure)",
-  T2_Restroom_B: "Restroom B (Arrival)",
-  T2_Family_Room: "Family Room",
-  T2_Staff_WC: "Staff WC",
-};
-
 const QUICK_NOTES = [
-  "Valve replaced",
-  "False alarm — sensor recalibrated",
-  "Supply fitting tightened",
-  "Flapper seal cleaned and tested",
+  "Valve diaphragm replaced",
+  "False positive — sensor recalibrated",
+  "Supply union tightened",
+  "Solenoid seal inspected and tested",
 ];
 
-export function TicketsView({ tickets, onStatusChange, loading }: TicketsViewProps) {
-  // Filter States
-  const [selectedZone, setSelectedZone] = useState<string>("all");
-  const [selectedType, setSelectedType] = useState<string>("all");
-  const [showResolved, setShowResolved] = useState<boolean>(false);
+/**
+ * Single source of truth for column widths (7 columns).
+ * Order MUST match the header cells and the row cells:
+ * severity | issue (flexible) | flagged | water | cost | status | action
+ */
+const COLUMN_WIDTHS = [
+  "150px", // severity (chevron + mark)
+  undefined, // issue & location — takes the remaining space
+  "140px", // flagged
+  "112px", // water lost
+  "112px", // cost sustainability
+  "136px", // status
+  "120px", // action
+] as const;
 
-  // Modal State for Resolution Note
+const COLUMN_COUNT = COLUMN_WIDTHS.length;
+
+/** "sustained_leak" -> "Sustained leak" */
+function humanize(value?: string | null): string {
+  if (!value) return "—";
+  const text = value.replace(/_/g, " ").trim();
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+export function TicketsView({
+  tickets,
+  onStatusChange,
+  loading,
+}: TicketsViewProps) {
+  // Filters
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [severityFilter, setSeverityFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [zoneFilter, setZoneFilter] = useState<string>("all");
+  const [sortOrder, setSortOrder] = useState<string>("severity_desc");
+
+  // Expanded rows
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  // Modal State for Resolution
   const [resolvingTicket, setResolvingTicket] = useState<Ticket | null>(null);
   const [resolutionNote, setResolutionNote] = useState<string>("");
-  const [isSubmittingResolution, setIsSubmittingResolution] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Evidence panel expansion state (Feature 4 Explainability)
-  const [expandedEvidence, setExpandedEvidence] = useState<Record<string, boolean>>({});
-  const toggleEvidence = (ticketId: string) => {
-    setExpandedEvidence((prev) => ({
-      ...prev,
-      [ticketId]: !prev[ticketId],
-    }));
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
-  // ── Sorting & Partitioning ──────────────────────────────────────────────────
-  // Active: status is 'open' or 'dispatched'
-  // Resolved: status is 'resolved'
-  const { activeTickets, resolvedTickets } = useMemo(() => {
-    // 1. Filter by zone and anomaly type
-    const filtered = tickets.filter((t) => {
-      if (selectedZone !== "all" && t.zone_id !== selectedZone) return false;
-      if (selectedType !== "all" && t.anomaly_type !== selectedType) return false;
-      return true;
-    });
+  const handleRowKeyDown = (e: KeyboardEvent<HTMLElement>, id: string) => {
+    // Ignore keys pressed on inner controls (e.g. the Dispatch button)
+    if (e.target !== e.currentTarget) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      toggleExpanded(id);
+    }
+  };
 
-    const active: Ticket[] = [];
-    const resolved: Ticket[] = [];
+  // Counts
+  const counts = useMemo(() => {
+    let open = 0;
+    let dispatched = 0;
+    let resolved = 0;
+    for (const t of tickets) {
+      if (t.status === "open") open++;
+      else if (t.status === "dispatched") dispatched++;
+      else if (t.status === "resolved") resolved++;
+    }
+    return { open, dispatched, resolved, total: tickets.length };
+  }, [tickets]);
 
-    for (const t of filtered) {
-      if (t.status === "resolved") {
-        resolved.push(t);
-      } else {
-        active.push(t);
+  // Unique Anomaly Types & Zones for filter dropdowns
+  const anomalyTypes = useMemo(() => {
+    const set = new Set<string>();
+    tickets.forEach((t) => t.anomaly_type && set.add(t.anomaly_type));
+    return Array.from(set);
+  }, [tickets]);
+
+  const zoneIds = useMemo(() => {
+    const set = new Set<string>();
+    tickets.forEach((t) => t.zone_id && set.add(t.zone_id));
+    return Array.from(set);
+  }, [tickets]);
+
+  // Filtered & Sorted Tickets
+  const filteredTickets = useMemo(() => {
+    return tickets
+      .filter((t) => {
+        if (statusFilter !== "all" && t.status !== statusFilter) return false;
+        if (
+          severityFilter !== "all" &&
+          t.severity_label.toLowerCase() !== severityFilter
+        )
+          return false;
+        if (typeFilter !== "all" && t.anomaly_type !== typeFilter) return false;
+        if (zoneFilter !== "all" && t.zone_id !== zoneFilter) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortOrder === "severity_desc") {
+          const rA = SEVERITY_RANKS[a.severity_label.toLowerCase()] || 99;
+          const rB = SEVERITY_RANKS[b.severity_label.toLowerCase()] || 99;
+          if (rA !== rB) return rA - rB;
+          return (
+            new Date(b.timestamp_flagged).getTime() -
+            new Date(a.timestamp_flagged).getTime()
+          );
+        }
+        if (sortOrder === "newest") {
+          return (
+            new Date(b.timestamp_flagged).getTime() -
+            new Date(a.timestamp_flagged).getTime()
+          );
+        }
+        if (sortOrder === "oldest") {
+          return (
+            new Date(a.timestamp_flagged).getTime() -
+            new Date(b.timestamp_flagged).getTime()
+          );
+        }
+        if (sortOrder === "water_loss") {
+          return b.estimated_water_loss_liters - a.estimated_water_loss_liters;
+        }
+        return 0;
+      });
+  }, [tickets, statusFilter, severityFilter, typeFilter, zoneFilter, sortOrder]);
+
+  // De-duplicate AI text: check if same explanation appears on >= 3 visible tickets
+  const sharedAnalysisNote = useMemo(() => {
+    const freq = new Map<string, number>();
+    for (const t of filteredTickets) {
+      if (t.explanation) {
+        freq.set(t.explanation, (freq.get(t.explanation) || 0) + 1);
       }
     }
-
-    // 2. Sort Active: Severity first (Critical -> High -> Medium -> Low),
-    // then most recently flagged first (timestamp_flagged DESC)
-    active.sort((a, b) => {
-      const rankA = SEVERITY_ORDER[a.severity_label.toLowerCase()] || 99;
-      const rankB = SEVERITY_ORDER[b.severity_label.toLowerCase()] || 99;
-      if (rankA !== rankB) return rankA - rankB;
-      return new Date(b.timestamp_flagged).getTime() - new Date(a.timestamp_flagged).getTime();
-    });
-
-    // Sort Resolved: Most recently flagged first
-    resolved.sort((a, b) => new Date(b.timestamp_flagged).getTime() - new Date(a.timestamp_flagged).getTime());
-
-    return { activeTickets: active, resolvedTickets: resolved };
-  }, [tickets, selectedZone, selectedType]);
-
-  // Handle status button click
-  const handleStatusClick = (ticket: Ticket, targetStatus: "open" | "dispatched" | "resolved") => {
-    if (ticket.status === targetStatus) return;
-
-    if (targetStatus === "resolved") {
-      // Open resolution note modal
-      setResolvingTicket(ticket);
-      setResolutionNote(ticket.resolution_note || "");
-    } else {
-      // Immediate update
-      onStatusChange(ticket.ticket_id, targetStatus);
+    for (const [expl, count] of freq.entries()) {
+      if (count >= 3) {
+        return {
+          explanation: expl,
+          count,
+        };
+      }
     }
+    return null;
+  }, [filteredTickets]);
+
+  // Dispatch handler
+  const handleDispatch = async (t: Ticket) => {
+    await onStatusChange(t.ticket_id, "dispatched");
   };
 
-  // Submit Resolution from Modal
-  const handleConfirmResolution = async () => {
-    if (!resolvingTicket) return;
-    setIsSubmittingResolution(true);
+  // Submit resolution note modal
+  const handleConfirmResolve = async (e?: FormEvent) => {
+    if (e) e.preventDefault();
+    if (!resolvingTicket || !resolutionNote.trim()) return;
+
     try {
-      await onStatusChange(resolvingTicket.ticket_id, "resolved", resolutionNote.trim());
+      setIsSubmitting(true);
+      await onStatusChange(
+        resolvingTicket.ticket_id,
+        "resolved",
+        resolutionNote.trim()
+      );
       setResolvingTicket(null);
       setResolutionNote("");
     } finally {
-      setIsSubmittingResolution(false);
+      setIsSubmitting(false);
     }
-  };
-
-  const getSeverityBadge = (label: string, score: number) => {
-    switch (label.toLowerCase()) {
-      case "critical":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-bold bg-[#F04438]/15 text-[#F04438] border border-[#F04438]/35">
-            <AlertTriangle className="h-3 w-3" /> Critical ({score.toFixed(0)})
-          </span>
-        );
-      case "high":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-bold bg-[#F38744]/15 text-[#F38744] border border-[#F38744]/35">
-            <AlertCircle className="h-3 w-3" /> High ({score.toFixed(0)})
-          </span>
-        );
-      case "medium":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-bold bg-[#EAAA08]/15 text-[#EAAA08] border border-[#EAAA08]/35">
-            Medium ({score.toFixed(0)})
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-bold bg-[#717BBC]/15 text-[#717BBC] border border-[#717BBC]/35">
-            Low ({score.toFixed(0)})
-          </span>
-        );
-    }
-  };
-
-  const getAnomalyTypeBadge = (type: string) => {
-    const formatted = type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-    return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-[#1A2332] text-[#7C95B6] border border-[#2D3B4E]">
-        {formatted}
-      </span>
-    );
   };
 
   return (
     <div className="space-y-6">
-      {/* ── Top Filtering & Controls Toolbar ─────────────────────────────────── */}
-      <div className="bg-[#101010] rounded-md p-4.5 shadow-sm">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          {/* Filter Dropdowns */}
-          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-            <div className="flex items-center gap-1.5 text-xs text-[#8B949E]">
-              <Filter className="h-3.5 w-3.5 text-[#D4A359]" />
-              <span className="font-semibold uppercase tracking-wider text-[11px]">Filters:</span>
-            </div>
-
-            {/* Zone Filter */}
-            <select
-              value={selectedZone}
-              onChange={(e) => setSelectedZone(e.target.value)}
-              className="bg-[#080808] border border-white/15 text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#D4A359]"
-            >
-              <option value="all">All Zones</option>
-              <option value="T2_Restroom_A">T2_Restroom_A (Departure)</option>
-              <option value="T2_Restroom_B">T2_Restroom_B (Arrival)</option>
-              <option value="T2_Family_Room">T2_Family_Room</option>
-              <option value="T2_Staff_WC">T2_Staff_WC</option>
-            </select>
-
-            {/* Anomaly Type Filter */}
-            <select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className="bg-[#0D1117] border border-white/15 text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#C5A059]"
-            >
-              <option value="all">All Anomaly Types</option>
-              <option value="sustained_leak">Sustained Leak</option>
-              <option value="slow_drip">Slow Drip</option>
-              <option value="hygiene_threshold">Hygiene Threshold</option>
-              <option value="sensor_fault">Sensor Fault</option>
-            </select>
-          </div>
-
-          {/* Resolved Section Visibility Toggle */}
-          <button
-            onClick={() => setShowResolved(!showResolved)}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-              showResolved
-                ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
-                : "bg-[#0D1117] text-[#8B949E] hover:text-white border-white/10"
-            }`}
-          >
-            {showResolved ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-            <span>
-              {showResolved ? "Hide Resolved Tickets" : `Show Resolved (${resolvedTickets.length})`}
-            </span>
-          </button>
-        </div>
+      {/* 1. Page Header */}
+      <div className="pb-2 border-b border-[var(--border-hairline)]">
+        <h1 className="text-2xl font-bold tracking-tight text-[var(--text-1)]">
+          Incident Queue
+        </h1>
+        <p className="text-xs text-[var(--text-3)] mt-1 font-mono">
+          {counts.open} open · {counts.dispatched} dispatched · {counts.resolved} resolved
+        </p>
       </div>
 
-      {/* ── ACTIVE TICKETS SECTION ───────────────────────────────────────────── */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <h2 className="text-base font-bold text-white tracking-wide uppercase flex items-center gap-2">
-              Active Tickets Queue
-            </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#F0A202]/15 text-[#F0A202] border border-[#F0A202]/30">
-              {activeTickets.length} active
-            </span>
+      {/* 2. Single Toolbar */}
+      <Toolbar className="border-b border-[var(--border-hairline)] pb-4">
+        <SegmentedControl
+          value={statusFilter}
+          onValueChange={setStatusFilter}
+          items={[
+            { value: "all", label: `All (${counts.total})` },
+            { value: "open", label: "Open" },
+            { value: "dispatched", label: "Dispatched" },
+            { value: "resolved", label: "Resolved" },
+          ]}
+        />
+
+        <Select
+          value={severityFilter}
+          onValueChange={setSeverityFilter}
+          options={[
+            { value: "all", label: "All severities" },
+            { value: "critical", label: "Critical" },
+            { value: "high", label: "High" },
+            { value: "medium", label: "Medium" },
+            { value: "low", label: "Low" },
+          ]}
+          ariaLabel="Filter by severity"
+        />
+
+        <Select
+          value={typeFilter}
+          onValueChange={setTypeFilter}
+          options={[
+            { value: "all", label: "All issue types" },
+            ...anomalyTypes.map((type) => ({
+              value: type,
+              label: humanize(type),
+            })),
+          ]}
+          ariaLabel="Filter by issue type"
+        />
+
+        <Select
+          value={zoneFilter}
+          onValueChange={setZoneFilter}
+          options={[
+            { value: "all", label: "All zones" },
+            ...zoneIds.map((zid) => ({ value: zid, label: getZoneLabel(zid) })),
+          ]}
+          ariaLabel="Filter by zone"
+        />
+
+        <ToolbarSpacer />
+
+        <Select
+          value={sortOrder}
+          onValueChange={setSortOrder}
+          options={[
+            { value: "severity_desc", label: "Severity (Highest first)" },
+            { value: "newest", label: "Date (Newest first)" },
+            { value: "oldest", label: "Date (Oldest first)" },
+            { value: "water_loss", label: "Water lost (Highest first)" },
+          ]}
+          ariaLabel="Sort tickets"
+        />
+      </Toolbar>
+
+      {/* Shared Analysis Banner (De-duplicated AI text) */}
+      {sharedAnalysisNote && (
+        <div className="flex items-start gap-2.5 p-3 rounded-[var(--r-md)] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-xs text-[var(--text-2)]">
+          <Sparkles className="h-4 w-4 text-[var(--accent-text)] shrink-0 mt-0.5" />
+          <div>
+            <span className="font-semibold text-[var(--text-1)]">
+              Shared AI pattern ({sharedAnalysisNote.count} tickets):
+            </span>{" "}
+            <span>{sharedAnalysisNote.explanation}</span>
           </div>
-          <span className="text-xs text-[#8B949E]">
-            Sorted by: <strong className="text-white">Severity Rank</strong> (Critical → High → Med → Low), then most recent
-          </span>
-        </div>
-
-        {activeTickets.length === 0 ? (
-          <div className="bg-[#101010] rounded-md p-10 text-center text-xs text-[#8B949E]">
-            No active tickets matching the selected filters. All anomalies resolved or suppressed.
-          </div>
-        ) : (
-          <div className="space-y-3.5">
-            {activeTickets.map((t) => {
-              const stripeColor =
-                t.severity_label === "Critical"
-                  ? "#F04438"
-                  : t.severity_label === "High"
-                  ? "#F38744"
-                  : t.severity_label === "Medium"
-                  ? "#EAAA08"
-                  : "#717BBC";
-
-              return (
-                <div
-                  key={t.ticket_id}
-                  className="bg-[#101010] rounded-md p-5 shadow-sm transition-all relative overflow-hidden"
-                >
-                  {/* Left severity indicator bar */}
-                  <div
-                    className="absolute left-0 top-0 bottom-0 w-1.5"
-                    style={{ backgroundColor: stripeColor }}
-                  />
-
-                  {/* Header Row: Ticket ID, Severity, Anomaly Type, Zone, Fixture, Status Button Group */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      {getSeverityBadge(t.severity_label, t.severity_score)}
-                      <span className="font-mono text-xs font-bold text-white">{t.ticket_id}</span>
-                      {getAnomalyTypeBadge(t.anomaly_type)}
-                      <span className="text-xs text-[#8B949E]">
-                        in <strong className="text-white">{t.zone_id.replace("T2_", "").replace("_", " ")}</strong> · <strong className="text-[#C9D1D9] font-mono">{t.fixture_id}</strong>
-                      </span>
-                    </div>
-
-                    {/* Status Button Group: Open | Dispatched | Resolved */}
-                    <div className="flex items-center bg-[#080808] p-1 rounded-lg border border-white/[0.08] self-start sm:self-auto shrink-0">
-                      <button
-                        onClick={() => handleStatusClick(t, "open")}
-                        className={`px-3 py-1 rounded text-xs font-medium transition-all ${
-                          t.status === "open"
-                            ? "bg-[#1B222C] text-[#F38744] font-bold shadow-sm border border-[#F38744]/35"
-                            : "text-[#8B949E] hover:text-white"
-                        }`}
-                      >
-                        Open
-                      </button>
-                      <button
-                        onClick={() => handleStatusClick(t, "dispatched")}
-                        className={`flex items-center gap-1 px-3 py-1 rounded text-xs font-medium transition-all ${
-                          t.status === "dispatched"
-                            ? "bg-[#4D88C7]/20 text-[#4D88C7] font-bold border border-[#4D88C7]/35 shadow-sm"
-                            : "text-[#8B949E] hover:text-white"
-                        }`}
-                      >
-                        <Wrench className="h-3 w-3" />
-                        Dispatched
-                      </button>
-                      <button
-                        onClick={() => handleStatusClick(t, "resolved")}
-                        className="flex items-center gap-1 px-3 py-1 rounded text-xs font-medium text-[#8B949E] hover:text-[#2EB88A] transition-all"
-                      >
-                        <Check className="h-3 w-3" />
-                        Mark Resolved
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Telemetry Numbers Row */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 py-3 text-xs">
-                    <div>
-                      <span className="text-[#8B949E] block text-[10px] uppercase">Flagged At</span>
-                      <span className="font-mono text-[#F0F6FC]">{t.timestamp_flagged_str}</span>
-                    </div>
-                    <div>
-                      <span className="text-[#8B949E] block text-[10px] uppercase">Current Status</span>
-                      <span className="font-semibold text-white capitalize flex items-center gap-1.5">
-                        {t.status === "dispatched" ? (
-                          <>
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#4D88C7] animate-ping" />
-                            <span className="text-[#4D88C7]">Technician Dispatched</span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#F38744]" />
-                            <span className="text-[#F38744]">Open Incident</span>
-                          </>
-                        )}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[#8B949E] block text-[10px] uppercase">Estimated Water Loss</span>
-                      <span className="font-mono text-white font-bold">{t.estimated_water_loss_liters?.toFixed(1)} L</span>
-                    </div>
-                    <div>
-                      <span className="text-[#8B949E] block text-[10px] uppercase">Municipal Cost Impact</span>
-                      <span className="font-mono text-white font-bold">₹{t.estimated_cost_impact?.toFixed(2)}</span>
-                    </div>
-                    <div>
-                      <span className="text-[#8B949E] block text-[10px] uppercase">If Unresolved (24h)</span>
-                      <span className="font-mono text-white font-bold">
-                        {(t.sustainability?.projections?.["24h"]?.projected_loss_liters ?? Math.round(((t.evidence?.observed_flow_lpm ?? 0) * 1440) * 10) / 10).toLocaleString()} L
-                      </span>
-                      <span className="text-[10px] text-[#8B949E] block font-mono">
-                        ₹{(t.sustainability?.projections?.["24h"]?.projected_cost_inr ?? Math.round(((t.evidence?.observed_flow_lpm ?? 0) * 1440 * 0.05) * 100) / 100).toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* AI Analysis Explanation Sub-card */}
-                  {t.explanation && (
-                    <div className="mt-2 pt-3 border-t border-white/[0.06] bg-[#080808] rounded-lg p-3 border border-white/[0.04]">
-                      <div className="flex items-start gap-2.5">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-[#4D88C7]/15 text-[#4D88C7] border border-[#4D88C7]/30 shrink-0 mt-0.5">
-                          <Sparkles className="h-2.5 w-2.5" /> AI Analysis
-                        </span>
-                        <p className="text-xs text-[#C9D1D9] leading-relaxed whitespace-normal break-words">
-                          {t.explanation}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Feature 4: Explainable Anomaly Detection ("Why was this flagged?") */}
-                  <div className="mt-3 pt-2.5 border-t border-white/[0.04] flex flex-wrap items-center justify-between gap-2">
-                    <button
-                      onClick={() => toggleEvidence(t.ticket_id)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium text-[#D4A359] bg-[#D4A359]/10 hover:bg-[#D4A359]/20 border border-[#D4A359]/30 transition-all cursor-pointer"
-                    >
-                      <SlidersHorizontal className="h-3.5 w-3.5" />
-                      <span>{expandedEvidence[t.ticket_id] ? "Hide Evidence Breakdown" : "Why was this flagged?"}</span>
-                      {expandedEvidence[t.ticket_id] ? (
-                        <ChevronUp className="h-3.5 w-3.5" />
-                      ) : (
-                        <ChevronDown className="h-3.5 w-3.5" />
-                      )}
-                    </button>
-
-                    {t.evidence && (
-                      <div className="flex items-center gap-1.5 text-[11px] text-[#8B949E]">
-                        <span>Evidence Strength:</span>
-                        <strong
-                          className={
-                            t.evidence.evidence_strength_label === "Strong"
-                              ? "text-[#2EB88A]"
-                              : t.evidence.evidence_strength_label === "Moderate"
-                              ? "text-[#EAAA08]"
-                              : "text-[#717BBC]"
-                          }
-                        >
-                          {t.evidence.evidence_strength_label}
-                        </strong>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Expandable Evidence Breakdown Panel */}
-                  {expandedEvidence[t.ticket_id] && t.evidence && (
-                    <EvidencePanel evidence={t.evidence} />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* ── RESOLVED TICKETS AUDIT SECTION ───────────────────────────────────── */}
-      {showResolved && (
-        <div className="space-y-4 pt-4 border-t border-white/[0.08]">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <CheckCircle2 className="h-4 w-4 text-[#2EB88A]" />
-              <h3 className="text-sm font-bold text-white tracking-wide uppercase">
-                Resolved Tickets Audit Log
-              </h3>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#2EB88A]/15 text-[#2EB88A] border border-[#2EB88A]/30">
-                {resolvedTickets.length} resolved
-              </span>
-            </div>
-            <span className="text-xs text-[#8B949E]">Historical resolutions &amp; audit notes</span>
-          </div>
-
-          {resolvedTickets.length === 0 ? (
-            <div className="bg-[#101010] rounded-md p-8 text-center text-xs text-[#8B949E]">
-              No resolved tickets recorded yet.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {resolvedTickets.map((t) => (
-                <div
-                  key={t.ticket_id}
-                  className="bg-[#101010] rounded-md p-4.5 opacity-90 transition-all"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2.5 border-b border-white/[0.04]">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-[#2EB88A]/15 text-[#2EB88A] border border-[#2EB88A]/30">
-                        <CheckCircle2 className="h-3 w-3" /> Resolved
-                      </span>
-                      <span className="font-mono text-xs font-semibold text-white">{t.ticket_id}</span>
-                      <span className="text-xs text-[#8B949E]">
-                        {t.fixture_id} · {t.zone_id.replace("T2_", "").replace("_", " ")}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-[#8B949E] font-mono">{t.timestamp_flagged_str}</span>
-                      {/* Reopen Action */}
-                      <button
-                        onClick={() => handleStatusClick(t, "open")}
-                        className="text-xs px-2.5 py-1 rounded bg-[#080808] hover:bg-white/10 text-[#8B949E] hover:text-white border border-white/10 transition-all"
-                      >
-                        Reopen
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Resolution Note Callout */}
-                  <div className="mt-3 p-3 bg-[#2EB88A]/10 border border-[#2EB88A]/25 rounded-lg text-xs flex items-start gap-2.5">
-                    <FileText className="h-4 w-4 text-[#2EB88A] shrink-0 mt-0.5" />
-                    <div>
-                      <span className="text-[11px] font-semibold text-[#2EB88A] block uppercase tracking-wider">
-                        Resolution Audit Note:
-                      </span>
-                      <p className="text-[#C9D1D9] mt-0.5">
-                        {t.resolution_note || "No resolution note provided."}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Feature 2: Intervention Impact (Section 2.7) */}
-                  {t.sustainability?.intervention_impact && (
-                    <div className="mt-2.5 p-3 bg-[#080808] border border-white/[0.08] rounded-lg text-xs space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="inline-flex items-center gap-1.5 font-bold uppercase tracking-wider text-[#F0F6FC] text-[11px]">
-                          <span className="p-1 rounded bg-[#2EB88A]/15 text-[#2EB88A]">
-                            <TrendingDown className="h-3 w-3" />
-                          </span>
-                          Intervention Impact
-                        </span>
-                        <span className="text-[10px] text-[#8B949E] font-mono">
-                          Counterfactual 24h Baseline Model
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-2 py-1">
-                        <div className="bg-[#080808] p-2 rounded border border-white/[0.04]">
-                          <span className="text-[10px] text-[#8B949E] block uppercase">Actual Water Lost</span>
-                          <span className="font-mono font-bold text-[#F0F6FC] text-sm">
-                            {t.sustainability.intervention_impact.actual_loss_liters.toFixed(1)} L
-                          </span>
-                        </div>
-                        <div className="bg-[#080808] p-2 rounded border border-white/[0.04]">
-                          <span className="text-[10px] text-[#8B949E] block uppercase font-medium">Estimated Water Saved</span>
-                          <span className="font-mono font-bold text-[#F0F6FC] text-sm">
-                            +{t.sustainability.intervention_impact.estimated_water_saved_liters.toFixed(1)} L
-                          </span>
-                        </div>
-                        <div className="bg-[#080808] p-2 rounded border border-white/[0.04]">
-                          <span className="text-[10px] text-[#8B949E] block uppercase font-medium">Estimated Avoided Cost</span>
-                          <span className="font-mono font-bold text-[#F0F6FC] text-sm">
-                            ₹{t.sustainability.intervention_impact.avoided_cost_inr.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <p className="text-[10px] text-[#8B949E] italic">
-                        Prompt technician resolution prevented an estimated additional{" "}
-                        {t.sustainability.intervention_impact.estimated_water_saved_liters.toFixed(1)} Litres from escaping during
-                        the standard 24-hour unassisted inspection cycle.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* AI Explanation preserved */}
-                  {t.explanation && (
-                    <div className="mt-2 text-xs text-[#8B949E] italic pl-2 border-l-2 border-white/10">
-                      Incident Summary: {t.explanation}
-                    </div>
-                  )}
-
-                  {/* Feature 4: Explainable Anomaly Detection ("Why was this flagged?") */}
-                  <div className="mt-3 pt-2.5 border-t border-white/[0.04] flex flex-wrap items-center justify-between gap-2">
-                    <button
-                      onClick={() => toggleEvidence(t.ticket_id)}
-                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium text-[#D4A359] bg-[#D4A359]/10 hover:bg-[#D4A359]/20 border border-[#D4A359]/30 transition-all cursor-pointer"
-                    >
-                      <SlidersHorizontal className="h-3 w-3" />
-                      <span>{expandedEvidence[t.ticket_id] ? "Hide Evidence" : "Why was this flagged?"}</span>
-                      {expandedEvidence[t.ticket_id] ? (
-                        <ChevronUp className="h-3 w-3" />
-                      ) : (
-                        <ChevronDown className="h-3 w-3" />
-                      )}
-                    </button>
-
-                    {t.evidence && (
-                      <div className="flex items-center gap-1.5 text-[11px] text-[#8B949E]">
-                        <span>Evidence Strength:</span>
-                        <strong
-                          className={
-                            t.evidence.evidence_strength_label === "Strong"
-                              ? "text-[#2EB88A]"
-                              : t.evidence.evidence_strength_label === "Moderate"
-                              ? "text-[#EAAA08]"
-                              : "text-[#717BBC]"
-                          }
-                        >
-                          {t.evidence.evidence_strength_label}
-                        </strong>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Expandable Evidence Breakdown Panel */}
-                  {expandedEvidence[t.ticket_id] && t.evidence && (
-                    <EvidencePanel evidence={t.evidence} />
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
 
-      {/* ── RESOLUTION NOTE MODAL DIALOG ────────────────────────────────────── */}
-      {resolvingTicket && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#101010] rounded-md max-w-lg w-full p-6 shadow-2xl space-y-4">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
-              <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                  <CheckCircle2 className="h-4 w-4" />
+      {/* 3. Queue Table */}
+      {filteredTickets.length === 0 ? (
+        <EmptyState
+          icon={<CheckCircle2 className="h-8 w-8 text-[var(--healthy-fg)]" />}
+          title="No tickets match this filter"
+          description="Everything in this view has been resolved or meets normal operational baseline."
+          action={
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setStatusFilter("all");
+                setSeverityFilter("all");
+                setTypeFilter("all");
+                setZoneFilter("all");
+              }}
+            >
+              Reset all filters
+            </Button>
+          }
+        />
+      ) : (
+        <div className="rounded-[var(--r-md)] border border-[var(--border-hairline)] bg-[var(--bg-surface)] overflow-hidden">
+          <Table className="table-fixed w-full">
+            {/* Column widths live here ONLY, so header and rows can never disagree */}
+            <colgroup>
+              {COLUMN_WIDTHS.map((width, i) => (
+                <col key={i} style={width ? { width } : undefined} />
+              ))}
+            </colgroup>
+
+            <TableHeader>
+              <TableRow>
+                <TableHead className="pl-5">Severity</TableHead>
+                <TableHead>Issue &amp; location</TableHead>
+                <TableHead>Flagged</TableHead>
+                <TableHead align="right">Water lost</TableHead>
+                <TableHead align="right">Cost sustainability</TableHead>
+                <TableHead align="center">Status</TableHead>
+                <TableHead align="right" className="pr-4">
+                  Action
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+
+            <TableBody>
+              {filteredTickets.map((t) => {
+                const sev = t.severity_label.toLowerCase() as Severity;
+                const fixtureName = t.fixture_id
+                  .replace(/^T2_/, "")
+                  .replace(/_/g, "-");
+                const zoneName = getZoneLabel(t.zone_id);
+                const isResolved = t.status === "resolved";
+                const isExpanded = expandedIds.has(t.ticket_id);
+                const Chevron = isExpanded ? ChevronDown : ChevronRight;
+
+                const statusBadgeType =
+                  t.status === "open"
+                    ? "warning"
+                    : t.status === "dispatched"
+                      ? "info"
+                      : "healthy";
+
+                // Severity rail: inset left border on the first cell
+                const railClass =
+                  sev === "critical" || sev === "high"
+                    ? "shadow-[inset_3px_0_0_0_var(--critical-fg)]"
+                    : sev === "medium"
+                      ? "shadow-[inset_3px_0_0_0_var(--warning-fg)]"
+                      : "";
+
+                return (
+                  <Fragment key={t.ticket_id}>
+                    <TableRow
+                      className="cursor-pointer"
+                      onClick={() => toggleExpanded(t.ticket_id)}
+                      onKeyDown={(e: KeyboardEvent<HTMLElement>) =>
+                        handleRowKeyDown(e, t.ticket_id)
+                      }
+                      tabIndex={0}
+                      aria-expanded={isExpanded}
+                    >
+                      {/* 1. Severity (with expand chevron) */}
+                      <TableCell className={`pl-5 ${railClass}`}>
+                        <div className="flex items-center gap-2">
+                          <Chevron
+                            className="h-4 w-4 shrink-0 text-[var(--text-3)]"
+                            aria-hidden="true"
+                          />
+                          <SeverityMark severity={sev} />
+                        </div>
+                      </TableCell>
+
+                      {/* 2. Issue & Location */}
+                      <TableCell>
+                        <div className="min-w-0">
+                          <div className="font-medium text-[var(--text-1)] truncate">
+                            {humanize(t.anomaly_type)}
+                          </div>
+                          <div className="text-xs text-[var(--text-3)] mt-0.5 truncate">
+                            Fixture {fixtureName} · {zoneName}
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      {/* 3. Flagged */}
+                      <TableCell>
+                        <span className="font-mono text-xs text-[var(--text-2)] whitespace-nowrap">
+                          {formatDateTime(t.timestamp_flagged)}
+                        </span>
+                      </TableCell>
+
+                      {/* 4. Water lost */}
+                      <TableCell
+                        numeric
+                        align="right"
+                        className="whitespace-nowrap tabular-nums"
+                      >
+                        {t.estimated_water_loss_liters.toFixed(1)} L
+                      </TableCell>
+
+                      {/* 5. Cost sustainability */}
+                      <TableCell
+                        numeric
+                        align="right"
+                        className="whitespace-nowrap tabular-nums"
+                      >
+                        ₹{Math.round(t.estimated_cost_impact).toLocaleString("en-IN")}
+                      </TableCell>
+
+                      {/* 6. Status */}
+                      <TableCell align="center">
+                        <Badge status={statusBadgeType}>
+                          {t.status === "open"
+                            ? "Open"
+                            : t.status === "dispatched"
+                              ? "Dispatched"
+                              : "Resolved"}
+                        </Badge>
+                      </TableCell>
+
+                      {/* 7. Action */}
+                      <TableCell
+                        align="right"
+                        className="pr-4"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {t.status === "open" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDispatch(t)}
+                            className="text-xs"
+                          >
+                            Dispatch
+                          </Button>
+                        )}
+                        {t.status === "dispatched" && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => {
+                              setResolvingTicket(t);
+                              setResolutionNote(t.resolution_note || "");
+                            }}
+                            className="text-xs"
+                          >
+                            Resolve
+                          </Button>
+                        )}
+                        {isResolved && (
+                          <span className="text-xs text-[var(--text-3)]">
+                            Completed
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+
+                    {/* Expanded details: one cell spanning all 7 columns */}
+                    {isExpanded && (
+                      <TableRow>
+                        <TableCell
+                          colSpan={COLUMN_COUNT}
+                          className="bg-[var(--bg-subtle)] px-5 py-4"
+                        >
+                          <div className="space-y-4">
+                            {/* Summary & ID */}
+                            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border-hairline)] pb-3">
+                              <div className="space-y-1">
+                                <span className="text-caption font-medium text-[var(--text-3)]">
+                                  Incident summary
+                                </span>
+                                <p className="text-sm font-medium text-[var(--text-1)]">
+                                  Observed flow{" "}
+                                  {t.evidence?.observed_flow_lpm?.toFixed(2) ?? "—"} L/min
+                                  vs baseline{" "}
+                                  {t.evidence?.expected_flow_lpm?.toFixed(2) ?? "—"} L/min
+                                  across {t.evidence?.duration_minutes ?? "—"} minutes.
+                                </p>
+                              </div>
+                              <CopyableId fullId={t.ticket_id} />
+                            </div>
+
+                            {/* AI analysis (hidden if already shown in the shared banner) */}
+                            {(!sharedAnalysisNote ||
+                              sharedAnalysisNote.explanation !== t.explanation) &&
+                              t.explanation && (
+                                <div className="p-3 rounded-[var(--r-sm)] border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-xs space-y-1">
+                                  <div className="flex items-center gap-1.5 font-semibold text-[var(--text-1)]">
+                                    <Sparkles className="h-3.5 w-3.5 text-[var(--accent-text)]" />
+                                    <span>Diagnostics &amp; AI guidance</span>
+                                  </div>
+                                  <p className="text-[var(--text-2)] leading-relaxed">
+                                    {t.explanation}
+                                  </p>
+                                </div>
+                              )}
+
+                            {/* Resolution note */}
+                            {isResolved && t.resolution_note && (
+                              <div className="p-3 rounded-[var(--r-sm)] border border-[var(--healthy-fg)]/20 bg-[var(--healthy-tint)] text-xs text-[var(--healthy-fg)] space-y-1">
+                                <span className="font-semibold">Resolution note:</span>
+                                <p>{t.resolution_note}</p>
+                              </div>
+                            )}
+
+                            {/* Evidence */}
+                            {t.evidence && (
+                              <Disclosure title="Why was this flagged? (Deterministic telemetry evidence)">
+                                <div className="pt-2">
+                                  <EvidencePanel evidence={t.evidence} />
+                                </div>
+                              </Disclosure>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* 4. Resolve Ticket Modal (Radix Dialog) */}
+      <Dialog
+        open={!!resolvingTicket}
+        onOpenChange={(open) => !open && setResolvingTicket(null)}
+      >
+        <DialogContent>
+          <form onSubmit={handleConfirmResolve}>
+            <DialogHeader>
+              <DialogTitle>
+                Resolve ticket{" "}
+                {resolvingTicket?.ticket_id
+                  ? resolvingTicket.ticket_id.slice(-6)
+                  : ""}
+              </DialogTitle>
+              <DialogDescription>
+                {humanize(resolvingTicket?.anomaly_type)} · Fixture{" "}
+                {resolvingTicket?.fixture_id
+                  .replace(/^T2_/, "")
+                  .replace(/_/g, "-")}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-3">
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="resolution-note-input"
+                  className="text-xs font-semibold text-[var(--text-2)]"
+                >
+                  Resolution note{" "}
+                  <span className="text-[var(--critical-fg)]">*</span>
+                </label>
+                <textarea
+                  id="resolution-note-input"
+                  rows={3}
+                  required
+                  value={resolutionNote}
+                  onChange={(e) => setResolutionNote(e.target.value)}
+                  placeholder="Describe the maintenance action taken..."
+                  className="w-full rounded-[var(--r-md)] border border-[var(--border-strong)] bg-[var(--bg-surface)] p-2.5 text-sm text-[var(--text-1)] placeholder-[var(--text-3)] focus:outline-2 focus:outline-[var(--accent-ring)]"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <span className="text-[11px] text-[var(--text-3)]">
+                  Quick suggestions:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {QUICK_NOTES.map((note) => (
+                    <button
+                      key={note}
+                      type="button"
+                      onClick={() => setResolutionNote(note)}
+                      className="text-xs px-2 py-1 rounded-[var(--r-sm)] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--text-2)] hover:text-[var(--text-1)] hover:bg-[var(--bg-surface)] transition-colors cursor-pointer"
+                    >
+                      {note}
+                    </button>
+                  ))}
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">Resolve Anomaly Ticket</h3>
-                  <p className="text-xs font-mono text-[#8B949E]">{resolvingTicket.ticket_id}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setResolvingTicket(null)}
-                className="p-1 rounded text-[#8B949E] hover:text-white"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Ticket Snapshot info */}
-            <div className="bg-[#12161A] p-3 rounded-lg text-xs space-y-1 text-[#8B949E] border border-white/[0.04]">
-              <div>
-                Target: <strong className="text-white">{resolvingTicket.fixture_id}</strong> in{" "}
-                <strong className="text-white">{resolvingTicket.zone_id.replace("T2_", "").replace("_", " ")}</strong>
-              </div>
-              <div>
-                Anomaly: <span className="text-[#8FA3BB] font-medium">{resolvingTicket.anomaly_type.replace(/_/g, " ")}</span> · Severity:{" "}
-                <strong className="text-white">{resolvingTicket.severity_label}</strong>
               </div>
             </div>
 
-            {/* Prompt for Short Resolution Note */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-white block">
-                Resolution Note <span className="text-[#8B949E] font-normal">(required audit trail)</span>
-              </label>
-              <textarea
-                rows={3}
-                placeholder="e.g. Valve replaced, flapper seal adjusted, sensor recalibrated..."
-                value={resolutionNote}
-                onChange={(e) => setResolutionNote(e.target.value)}
-                className="w-full bg-[#0D1117] border border-white/15 rounded-lg p-3 text-xs text-white placeholder-[#8B949E] focus:outline-none focus:border-emerald-400 transition-all"
-                autoFocus
-              />
-
-              {/* Quick Suggestion Chips */}
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {QUICK_NOTES.map((note) => (
-                  <button
-                    key={note}
-                    type="button"
-                    onClick={() => setResolutionNote(note)}
-                    className="text-[11px] px-2 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.1] text-[#8B949E] hover:text-white border border-white/[0.08] transition-all"
-                  >
-                    + {note}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/[0.08]">
-              <button
+            <DialogFooter>
+              <Button
+                variant="ghost"
                 type="button"
                 onClick={() => setResolvingTicket(null)}
-                className="px-4 py-2 rounded-lg text-xs font-medium text-[#8B949E] hover:text-white bg-transparent hover:bg-white/5 transition-all"
+                disabled={isSubmitting}
               >
                 Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isSubmittingResolution}
-                onClick={handleConfirmResolution}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-black shadow-lg transition-all disabled:opacity-50"
+              </Button>
+              <Button
+                variant="primary"
+                type="submit"
+                disabled={!resolutionNote.trim() || isSubmitting}
+                loading={isSubmitting}
               >
-                <Check className="h-4 w-4" />
-                <span>Confirm &amp; Resolve Ticket</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                Resolve ticket
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

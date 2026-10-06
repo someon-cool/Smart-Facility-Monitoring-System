@@ -55,7 +55,7 @@ FACILITY_CONFIG_ENTRIES = [
      "Target cleaning cycle interval in minutes for T2_Staff_WC"),
     ("peer_carbon_benchmark_kg_per_day", "2.10",                                        "float",
      "Industry peer-group carbon benchmark for comparable airport restroom blocks (kg CO2e/day)"),
-    ("sim_start",                   "2024-01-15T00:00:00",                              "string",
+    ("sim_start",                   "2024-10-02T00:00:00",                              "string",
      "Simulation start datetime (ISO-8601)"),
     ("sim_duration_hours",          "168",                                              "float",
      "Simulation duration in hours (7 days)"),

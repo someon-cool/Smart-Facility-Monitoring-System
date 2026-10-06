@@ -1,27 +1,27 @@
 "use client";
 
-import React from "react";
 import {
   ShieldCheck,
-  AlertCircle,
   Activity,
   Clock,
   UserX,
-  HelpCircle,
   Gauge,
-  SlidersHorizontal,
+  Info,
 } from "lucide-react";
 import { TicketEvidence } from "./types";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/Popover";
+import { Badge } from "@/components/ui/Badge";
+import { cn } from "@/lib/cn";
 
-interface EvidencePanelProps {
+export interface EvidencePanelProps {
   evidence: TicketEvidence;
+  className?: string;
 }
 
-export function EvidencePanel({ evidence }: EvidencePanelProps) {
+export function EvidencePanel({ evidence, className }: EvidencePanelProps) {
   const {
     expected_flow_lpm,
     observed_flow_lpm,
-    peak_flow_lpm,
     flow_deviation_lpm,
     duration_minutes,
     occupancy_rate,
@@ -33,174 +33,164 @@ export function EvidencePanel({ evidence }: EvidencePanelProps) {
     normalized_sensor_health,
     evidence_strength_score,
     evidence_strength_label,
-    estimated_water_loss_liters,
   } = evidence;
 
-  // Strength Badge Palette
-  const strengthStyles = {
-    Strong: {
-      bg: "bg-[#2EB88A]/15",
-      text: "text-[#2EB88A]",
-      border: "border-[#2EB88A]/35",
-      bar: "bg-[#2EB88A]",
-    },
-    Moderate: {
-      bg: "bg-[#EAAA08]/15",
-      text: "text-[#EAAA08]",
-      border: "border-[#EAAA08]/35",
-      bar: "bg-[#EAAA08]",
-    },
-    Weak: {
-      bg: "bg-[#717BBC]/15",
-      text: "text-[#717BBC]",
-      border: "border-[#717BBC]/35",
-      bar: "bg-[#717BBC]",
-    },
-  }[evidence_strength_label] || {
-    bg: "bg-white/10",
-    text: "text-[#F0F6FC]",
-    border: "border-white/20",
-    bar: "bg-white",
-  };
+  const strengthBadgeStatus =
+    evidence_strength_label === "Strong"
+      ? "healthy"
+      : evidence_strength_label === "Moderate"
+      ? "warning"
+      : "info";
 
   return (
-    <div className="mt-4 pt-4 border-t border-white/[0.08] bg-[#080808] rounded-lg p-4 space-y-4">
-      {/* 1. Header & Evidence Strength */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+    <div
+      className={cn(
+        "rounded-[var(--r-md)] border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 space-y-4",
+        className
+      )}
+    >
+      {/* 1. Header & Evidence Strength & Info Popover */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-hairline)] pb-2.5">
         <div className="flex items-center gap-2">
-          <div className="p-1 rounded bg-[#D4A359]/15 text-[#D4A359]">
-            <SlidersHorizontal className="h-4 w-4" />
-          </div>
-          <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-[#F0F6FC]">
-              Why was this flagged?
-            </span>
-            <span className="ml-2 text-[11px] text-[#8B949E]">
-              Deterministic Telemetry Evidence Breakdown
-            </span>
-          </div>
+          <h4 className="text-body font-semibold text-[var(--text-1)]">
+            Telemetry evidence breakdown
+          </h4>
+          {/* Info Popover replacing the inline weighting formula paragraph */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center text-[var(--text-3)] hover:text-[var(--text-1)] cursor-pointer"
+                aria-label="How evidence is weighted"
+              >
+                <Info className="h-3.5 w-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 text-xs space-y-2 p-3">
+              <p className="font-semibold text-[var(--text-1)]">
+                How evidence is weighted
+              </p>
+              <p className="font-mono text-[11px] text-[var(--text-2)]">
+                30% Flow deviation + 25% Duration span + 25% Occupancy mismatch + 20% Sensor diagnostic
+              </p>
+              <p className="text-[var(--text-3)] leading-relaxed">
+                Deterministic scores are computed against baseline moving averages for the fixture class.
+              </p>
+            </PopoverContent>
+          </Popover>
         </div>
 
-        {/* Evidence Strength Badge */}
+        {/* Strength Badge */}
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-[#8B949E]">Evidence Strength:</span>
-          <span
-            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-semibold border ${strengthStyles.bg} ${strengthStyles.text} ${strengthStyles.border}`}
-          >
-            <ShieldCheck className="h-3.5 w-3.5" />
-            <span>{evidence_strength_label}</span>
-            <span className="text-[10px] opacity-75 font-mono">
-              ({evidence_strength_score}/100)
-            </span>
-          </span>
+          <span className="text-xs text-[var(--text-3)]">Confidence:</span>
+          <Badge status={strengthBadgeStatus}>
+            {evidence_strength_label} ({evidence_strength_score}/100)
+          </Badge>
         </div>
       </div>
 
       {/* 2. Four Multi-Signal Evidence Bars with Consolidated Telemetry */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-[#080808] p-3 rounded-lg border border-white/[0.06]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Flow Deviation */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-[11px]">
-            <span className="text-[#8B949E] flex items-center gap-1">
-              <Activity className="h-3 w-3 text-[#4D88C7]" /> Flow Deviation
+        <div className="space-y-1.5 rounded-[var(--r-sm)] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-2.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-[var(--text-2)] flex items-center gap-1.5 font-medium">
+              <Activity className="h-3.5 w-3.5 text-[var(--text-1)]" /> Flow
             </span>
-            <span className="font-mono font-medium text-[#F0F6FC]">
+            <span className="font-mono num font-semibold text-[var(--text-1)]">
               {normalized_flow_deviation}%
             </span>
           </div>
-          <div className="h-1.5 w-full bg-white/[0.06] rounded-full overflow-hidden">
+          <div className="h-1.5 w-full bg-[var(--border-hairline)] rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#4D88C7] rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(100, Math.max(0, normalized_flow_deviation))}%` }}
+              className="h-full bg-[var(--text-1)] rounded-full transition-all"
+              style={{
+                width: `${Math.min(100, Math.max(0, normalized_flow_deviation))}%`,
+              }}
             />
           </div>
-          <div className="text-[10px] text-[#8B949E] font-mono leading-relaxed">
-            Observed {observed_flow_lpm.toFixed(2)} L/min vs expected {expected_flow_lpm.toFixed(2)} L/min baseline (+{flow_deviation_lpm.toFixed(2)} L/m above)
+          <div className="text-[11px] text-[var(--text-3)] leading-relaxed">
+            {observed_flow_lpm.toFixed(2)} L/min vs {expected_flow_lpm.toFixed(2)} L/min base (+{flow_deviation_lpm.toFixed(2)} L/m)
           </div>
         </div>
 
         {/* Duration */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-[11px]">
-            <span className="text-[#8B949E] flex items-center gap-1">
-              <Clock className="h-3 w-3 text-[#D4A359]" /> Duration Span
+        <div className="space-y-1.5 rounded-[var(--r-sm)] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-2.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-[var(--text-2)] flex items-center gap-1.5 font-medium">
+              <Clock className="h-3.5 w-3.5 text-[var(--text-1)]" /> Duration
             </span>
-            <span className="font-mono font-medium text-[#F0F6FC]">
+            <span className="font-mono num font-semibold text-[var(--text-1)]">
               {normalized_duration}%
             </span>
           </div>
-          <div className="h-1.5 w-full bg-white/[0.06] rounded-full overflow-hidden">
+          <div className="h-1.5 w-full bg-[var(--border-hairline)] rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#D4A359] rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(100, Math.max(0, normalized_duration))}%` }}
+              className="h-full bg-[var(--text-1)] rounded-full transition-all"
+              style={{
+                width: `${Math.min(100, Math.max(0, normalized_duration))}%`,
+              }}
             />
           </div>
-          <div className="text-[10px] text-[#8B949E] font-mono leading-relaxed">
-            {duration_minutes} min duration
+          <div className="text-[11px] text-[var(--text-3)] leading-relaxed">
+            Continuous for {duration_minutes} minutes
           </div>
         </div>
 
         {/* Occupancy Mismatch */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-[11px]">
-            <span className="text-[#8B949E] flex items-center gap-1">
-              <UserX className="h-3 w-3 text-[#F38744]" /> Occupancy Mismatch
+        <div className="space-y-1.5 rounded-[var(--r-sm)] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-2.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-[var(--text-2)] flex items-center gap-1.5 font-medium">
+              <UserX className="h-3.5 w-3.5 text-[var(--text-1)]" /> Occupancy
             </span>
-            <span className="font-mono font-medium text-[#F0F6FC]">
+            <span className="font-mono num font-semibold text-[var(--text-1)]">
               {normalized_occupancy_mismatch}%
             </span>
           </div>
-          <div className="h-1.5 w-full bg-white/[0.06] rounded-full overflow-hidden">
+          <div className="h-1.5 w-full bg-[var(--border-hairline)] rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#F38744] rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(100, Math.max(0, normalized_occupancy_mismatch))}%` }}
+              className="h-full bg-[var(--text-1)] rounded-full transition-all"
+              style={{
+                width: `${Math.min(100, Math.max(0, normalized_occupancy_mismatch))}%`,
+              }}
             />
           </div>
-          <div className="text-[10px] text-[#8B949E] font-mono leading-relaxed">
+          <div className="text-[11px] text-[var(--text-3)] leading-relaxed">
             {occupancy_mismatch === 1.0 || occupancy_rate === 0.0
-              ? "Zero occupancy detected (flow present, room vacant)"
-              : `${Math.round(occupancy_rate * 100)}% occupancy detected (${Math.round(occupancy_mismatch * 100)}% mismatch)`}
+              ? "Zero room occupancy during flow"
+              : `${Math.round(occupancy_rate * 100)}% occupied (${Math.round(occupancy_mismatch * 100)}% mismatch)`}
           </div>
         </div>
 
         {/* Sensor Health */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-[11px]">
-            <span className="text-[#8B949E] flex items-center gap-1">
-              <Gauge className="h-3 w-3 text-[#2EB88A]" /> Sensor Diagnostic
+        <div className="space-y-1.5 rounded-[var(--r-sm)] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-2.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-[var(--text-2)] flex items-center gap-1.5 font-medium">
+              <Gauge className="h-3.5 w-3.5 text-[var(--text-1)]" /> Diagnostic
             </span>
-            <span className="font-mono font-medium text-[#F0F6FC]">
+            <span className="font-mono num font-semibold text-[var(--text-1)]">
               {normalized_sensor_health}%
             </span>
           </div>
-          <div className="h-1.5 w-full bg-white/[0.06] rounded-full overflow-hidden">
+          <div className="h-1.5 w-full bg-[var(--border-hairline)] rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#2EB88A] rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(100, Math.max(0, normalized_sensor_health))}%` }}
+              className="h-full bg-[var(--text-1)] rounded-full transition-all"
+              style={{
+                width: `${Math.min(100, Math.max(0, normalized_sensor_health))}%`,
+              }}
             />
           </div>
-          <div className="text-[10px] text-[#8B949E] font-mono leading-relaxed">
-            Status: {sensor_health} (100% confidence)
+          <div className="text-[11px] text-[var(--text-3)] leading-relaxed">
+            Sensor telemetry health: {sensor_health}
           </div>
         </div>
       </div>
 
-      {/* 3. Formula & Grounding Rationale Note */}
-      <div className="flex items-start gap-2 pt-1 text-[11px] text-[#8B949E]/80 bg-[#080808] p-2.5 rounded border border-white/[0.04]">
-        <HelpCircle className="h-3.5 w-3.5 text-[#D4A359] shrink-0 mt-0.5" />
-        <div className="space-y-0.5">
-          <p>
-            <strong className="text-[#F0F6FC]">Evidence Weighting Formula:</strong>{" "}
-            <span className="font-mono text-[10px] text-[#D4A359]">
-              30% Flow Deviation + 25% Duration + 25% Occupancy Mismatch + 20% Sensor Health
-            </span>
-          </p>
-          <p className="text-[10px] text-[#8B949E]">
-            {occupancy_mismatch === 1.0
-              ? "Continuous water flow while the fixture remained completely unoccupied is inconsistent with passenger use and strongly indicates a stuck valve or mechanical leak."
-              : "Flow parameters deviated from historical hourly moving baseline during occupied usage."}
-          </p>
-        </div>
+      {/* 3. Operational Rationale */}
+      <div className="text-xs text-[var(--text-2)] bg-[var(--bg-subtle)] p-2.5 rounded-[var(--r-sm)] border border-[var(--border-hairline)]">
+        {occupancy_mismatch === 1.0
+          ? "Continuous water flow detected while the stall remained completely unoccupied. Inconsistent with human usage — indicates valve diaphragm or seal failure."
+          : "Flow rate exceeded historical moving baseline during detected usage."}
       </div>
     </div>
   );

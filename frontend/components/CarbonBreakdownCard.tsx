@@ -102,22 +102,28 @@ export function CarbonBreakdownCard({ summary, loading, onExploreMore }: CarbonB
         </div>
 
         {/* Stacked Progress Bar */}
-        <div className="h-3 w-full bg-[#1A1A1A] rounded-full overflow-hidden flex shadow-inner">
+        <div className="h-6 w-full bg-[#1A1A1A] rounded-full overflow-hidden flex shadow-inner border border-white/[0.05]">
           <div
-            style={{ width: `${waterPct}%` }}
-            className="bg-[#4D88C7] hover:brightness-110 transition-all cursor-pointer"
+            style={{ width: `${Math.max(waterPct, 2)}%` }}
+            className="bg-gradient-to-r from-[#2a5b8f] to-[#4D88C7] flex items-center justify-center hover:brightness-110 transition-all cursor-pointer"
             title={`Operational Water: ${waterKg.toFixed(2)} kg (${waterPct.toFixed(1)}%)`}
-          />
+          >
+            {waterPct > 10 && <span className="text-[10px] font-bold text-white shadow-sm">💧 {waterPct.toFixed(0)}%</span>}
+          </div>
           <div
-            style={{ width: `${energyPct}%` }}
-            className="bg-[#F59E0B] hover:brightness-110 transition-all cursor-pointer"
+            style={{ width: `${Math.max(energyPct, 2)}%` }}
+            className="bg-gradient-to-r from-[#d97706] to-[#F59E0B] flex items-center justify-center hover:brightness-110 transition-all cursor-pointer"
             title={`Fixture Electricity: ${energyKg.toFixed(2)} kg (${energyPct.toFixed(1)}%)`}
-          />
+          >
+            {energyPct > 10 && <span className="text-[10px] font-bold text-white shadow-sm">⚡ {energyPct.toFixed(0)}%</span>}
+          </div>
           <div
-            style={{ width: `${wastePct}%` }}
-            className="bg-[#F04438] hover:brightness-110 transition-all cursor-pointer"
+            style={{ width: `${Math.max(wastePct, 2)}%` }}
+            className="bg-gradient-to-r from-[#b91c1c] to-[#F04438] flex items-center justify-center hover:brightness-110 transition-all cursor-pointer"
             title={`Fault/Wasted Water: ${wasteKg.toFixed(2)} kg (${wastePct.toFixed(1)}%)`}
-          />
+          >
+            {wastePct > 10 && <span className="text-[10px] font-bold text-white shadow-sm">⚠️ {wastePct.toFixed(0)}%</span>}
+          </div>
         </div>
       </div>
 

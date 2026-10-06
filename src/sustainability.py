@@ -1,7 +1,7 @@
 """
 sustainability.py — Water-Savings & Sustainability Impact Engine (Feature 2).
 
-Implements Section 2 of the KOHLER Smart Facility Plan:
+Implements Section 2 of the Smart Facility Plan:
 1. Incident Projection (Section 2.2):
    Calculates runaway unresolved water loss across 1h, 6h, 24h, and 7d horizons
    based on observed flow telemetry.

@@ -1,7 +1,7 @@
 """
 explainability.py — Explainable Anomaly Detection Engine (Feature 4).
 
-Implements Section 4 of the KOHLER Smart Facility Plan:
+Implements Section 4 of the Smart Facility Plan:
 - Calculates transparent Evidence Strength based on detector components:
     evidence_strength = (
         normalized_flow_deviation * 0.30

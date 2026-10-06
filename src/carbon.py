@@ -1,5 +1,5 @@
 """
-carbon.py — Carbon Footprint Detector engine for KOHLER Smart Facility Manager.
+carbon.py — Carbon Footprint Detector engine for Smart Facility Manager.
 
 Implements:
 1. Energy simulation (simulate_energy_readings):

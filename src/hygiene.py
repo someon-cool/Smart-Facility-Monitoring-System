@@ -1,5 +1,5 @@
 """
-hygiene.py — Hygiene Module engine for KOHLER Smart Facility Manager.
+hygiene.py — Hygiene Module engine for Smart Facility Manager.
 
 Implements:
 1. Cleaning cycle schedule generation (simulate_cleaning_schedule):

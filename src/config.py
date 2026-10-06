@@ -66,7 +66,7 @@ ZONE_TRAFFIC_MULTIPLIER = {
 # duration_seconds distribution.  The flow_rate_lpm for the event's 1-minute
 # row is: event_volume_L / (event_duration_sec / 60)
 #
-# Values sourced from KOHLER commercial fixture specs and ASHRAE plumbing guides.
+# Values sourced from commercial fixture specs and ASHRAE plumbing guides.
 EVENT_PARAMS = {
     "sink": {
         "volume_L":      {"min": 0.5,  "max": 2.5},   # 0.5–2.5 L per handwash
@@ -291,7 +291,7 @@ CARBON_FACTOR_ELECTRICITY_KG_PER_KWH = 0.82       # kg CO₂e per kWh
 CARBON_FACTOR_HEATED_WATER_KG_PER_LITER = 0.00085  # kg CO₂e per litre heated
 
 # Per-fixture electrical power draw (watts).
-# Source: KOHLER commercial fixture spec sheets + ASHRAE 90.1 plumbing guidance.
+# Source: Commercial fixture spec sheets + ASHRAE 90.1 plumbing guidance.
 # active_w  = power draw during a water-use event (solenoid open, sensor active)
 # idle_w    = standby power draw between events (sensor polling, MCU alive)
 FIXTURE_POWER_SPECS = {

@@ -1,5 +1,5 @@
 """
-llm.py — Google Gemini LLM Layer for KOHLER Facility Monitor.
+llm.py — Google Gemini LLM Layer for Smart Facility Monitor.
 
 Generates:
 1. 1-2 sentence plain-English explanations for flagged anomaly tickets
@@ -204,7 +204,7 @@ def generate_ticket_explanation(ticket: dict) -> str:
     cost_rs = ticket.get("estimated_cost_impact", 0.0)
     ts = ticket.get("timestamp_flagged", "")
 
-    prompt = f"""You are a commercial plumbing intelligence system for KOHLER commercial facilities.
+    prompt = f"""You are a commercial plumbing intelligence system for commercial facilities.
 Generate a concise root-cause diagnostic hypothesis and recommended maintenance action for an anomaly ticket.
 
 TICKET TELEMETRY CONTEXT (Already displayed in UI):

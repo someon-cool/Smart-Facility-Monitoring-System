@@ -110,11 +110,11 @@ ZONE_CONFIG_ROWS = [
 
 # ── 3. fixture_config ──────────────────────────────────────────────────────────
 
-# KOHLER model names per fixture type (representative commercial range)
+# Model names per fixture type (representative commercial range)
 BRAND_MODELS = {
-    "sink":    "KOHLER K-7505-K Touchless Faucet (0.5 GPM)",
-    "toilet":  "KOHLER K-4960 Flushometer (1.28 GPF dual-flush)",
-    "urinal":  "KOHLER K-4970 Touchless Flushometer (0.5 GPF)",
+    "sink":    "Commercial Smart K-7505 Touchless Faucet (0.5 GPM)",
+    "toilet":  "Commercial Smart K-4960 Flushometer (1.28 GPF dual-flush)",
+    "urinal":  "Commercial Smart K-4970 Touchless Flushometer (0.5 GPF)",
 }
 
 # Nominal flow rates (LPM) from EVENT_PARAMS midpoints
@@ -187,7 +187,7 @@ def run_seed(db_path: str = None) -> None:
         db_path = str(DB_PATH)
 
     print("=" * 60)
-    print("KOHLER Facility Manager — Config Seeder")
+    print("Facility Manager — Config Seeder")
     print("=" * 60)
 
     init_db(db_path)

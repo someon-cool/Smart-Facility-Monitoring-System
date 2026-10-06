@@ -680,7 +680,7 @@ def get_sensor_intelligence(db_path: str) -> dict:
             "display_name": cfg.get("display_name", f_id),
             "zone_id": cfg["zone_id"],
             "fixture_type": cfg["fixture_type"],
-            "brand_model": cfg.get("brand_model", "KOHLER Smart Fixture"),
+            "brand_model": cfg.get("brand_model", "Commercial Smart Fixture"),
             "sensor_type": s_type,
             "sensor_tech_label": spec["tech_label"],
             "parameter_measured": spec["parameter"],

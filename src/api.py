@@ -1,5 +1,5 @@
 """
-api.py — FastAPI REST API for KOHLER Smart Facility Manager.
+api.py — FastAPI REST API for Smart Facility Manager.
 
 Exposes endpoints for the modern frontend:
 - Summary metrics
@@ -52,7 +52,7 @@ from src.recommendations import generate_recommendations
 from src.llm import get_gemini_model, get_copilot_model
 
 app = FastAPI(
-    title="KOHLER Smart Facility Manager API",
+    title="Smart Facility Manager API",
     version="2.0.0",
     description="REST backend for industrial facility telemetry, carbon footprint, hygiene, sensors, anomaly tickets, and AI explainability.",
 )
@@ -670,9 +670,9 @@ def chat_with_copilot(req: ChatRequest):
 - Live Status: {sensor_summary.get('online_count', 17)} Online, {sensor_summary.get('degraded_count', 0)} Degraded, {sensor_summary.get('fault_count', 0)} Fault/Offline
 - 7-Day Fleet Telemetry Uptime / Availability: {sensor_summary.get('average_uptime_pct', 99.6)}%
 - Sensor Technologies:
-  * 7 Sinks: Infrared Proximity & Turbine Flow Meter (KOHLER K-7505-K)
-  * 6 Toilets: Dual-Beam Ultrasonic Stall Occupancy & Flush Valve (KOHLER K-4960)
-  * 3 Urinals: Passive Infrared (PIR) Motion & Flow (KOHLER K-4991)
+  * 7 Sinks: Infrared Proximity & Turbine Flow Meter (Commercial Smart K-7505)
+  * 6 Toilets: Dual-Beam Ultrasonic Stall Occupancy & Flush Valve (Commercial Smart K-4960)
+  * 3 Urinals: Passive Infrared (PIR) Motion & Flow (Commercial Smart K-4991)
 - Parameters Measured: Continuous Flow Rate (LPM), Binary Occupancy / Motion Presence, Cumulative Usage Cycles.
 
 6. OPERATIONAL TRENDS, ANOMALIES & UNUSUAL VALUES:
@@ -691,7 +691,7 @@ def chat_with_copilot(req: ChatRequest):
     model = get_copilot_model()
     if model:
         try:
-            prompt = f"""You are the KOHLER Smart Facility Assistant, an intelligent operational copilot for airport restroom facility managers at Terminal 2.
+            prompt = f"""You are the Smart Facility Assistant, an intelligent operational copilot for airport restroom facility managers at Terminal 2.
 
 {grounding_context}
 

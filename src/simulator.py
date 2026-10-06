@@ -235,7 +235,7 @@ def run_preview(random_seed: int = 42) -> None:
     Used to validate the discrete event model before full 48h generation.
     """
     print("=" * 70)
-    print("KOHLER Simulator — PREVIEW MODE (6h, 3 fixtures)")
+    print("Facility Simulator — PREVIEW MODE (6h, 3 fixtures)")
     print("=" * 70)
 
     preview_fixtures = [
@@ -299,7 +299,7 @@ def run_batch(random_seed: int = 42) -> None:
     Deterministic given the same seed.
     """
     print("=" * 70)
-    print("KOHLER Smart Facility Manager -- Simulator v2 (discrete event model)")
+    print("Smart Facility Manager -- Simulator v2 (discrete event model)")
     print("=" * 70)
     print(f"  Random seed   : {random_seed}")
     print(f"  Sim window    : {SIM_START}  ->  +{SIM_DURATION_HOURS}h")
@@ -377,7 +377,7 @@ def run_batch(random_seed: int = 42) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="KOHLER Facility — sensor data simulator v2"
+        description="Smart Facility — sensor data simulator v2"
     )
     parser.add_argument(
         "--seed", type=int, default=42,

@@ -4,13 +4,13 @@
 
 **One-line goal:** Build a system that monitors simulated water/occupancy sensor data from a commercial facility, detects abnormal usage patterns (leaks, hygiene threshold breaches) using multi-signal reasoning (not flat thresholds), and auto-generates prioritized maintenance tickets — displayed on a live dashboard with an LLM-generated natural-language summary layer.
 
-**Scenario context (use this in your simulated data and demo):** A KOHLER-equipped commercial facility (pick one: airport restroom block, hospital ward, university building) with multiple restroom zones, each with flow sensors, occupancy sensors, flush counters, and diagnostic status per fixture.
+**Scenario context (use this in your simulated data and demo):** A smart-fixture-equipped commercial facility (pick one: airport restroom block, hospital ward, university building) with multiple restroom zones, each with flow sensors, occupancy sensors, flush counters, and diagnostic status per fixture.
 
 **Why this matters (ties to grading criteria):**
 - Approach & Innovation (45%): the detection logic (Section 4) is the core of this — multi-signal reasoning, adaptive baselines, severity scoring, not a single if-then rule.
 - Technical Execution (25%): working simulator → detection → storage → dashboard pipeline.
 - UX & Feasibility (20%): live dashboard, clear tickets, real-world deployable logic.
-- Business & Sustainability Impact (10%): water/cost savings estimation tied to KOHLER's water-conservation mission.
+- Business & Sustainability Impact (10%): water/cost savings estimation tied to facility water-conservation missions.
 
 ---
 

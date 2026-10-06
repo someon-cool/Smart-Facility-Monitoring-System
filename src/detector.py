@@ -491,7 +491,7 @@ def session_to_ticket(session: dict) -> dict:
 
 def run_detection() -> None:
     print("=" * 70)
-    print("KOHLER Smart Facility Manager -- Detector (Phase 2 / 4a-4e)")
+    print("Smart Facility Manager -- Detector (Phase 2 / 4a-4e)")
     print("=" * 70)
 
     print("\nLoading readings from database...")

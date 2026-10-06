@@ -1,5 +1,5 @@
 """
-recommendations.py — Sustainability Recommendations engine for KOHLER Smart Facility Manager.
+recommendations.py — Sustainability Recommendations engine for Smart Facility Manager.
 
 Generates prioritized, actionable recommendations from live DB data:
 - Water conservation (leak & drip resolution impact)

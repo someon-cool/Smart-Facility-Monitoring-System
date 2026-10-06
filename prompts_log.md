@@ -1,4 +1,4 @@
-# Prompts Log — KOHLER Smart Facility Manager
+# Prompts Log — Smart Facility Manager
 
 ## About This Log
 
@@ -84,13 +84,13 @@ All technical requirements, engineering decisions, and prompt formulations docum
 
 ---
 
-### Prompt 4 — Muted, Desaturated Palette & KOHLER Brand Anchor
+### Prompt 4 — Muted, Desaturated Palette & Brand Anchor
 **Date:** 2024-01-15  
 **Prompt given:**
 > The current dashboard uses one bright teal for almost everything (icons, metric numbers, input chips, chart lines) which reads as monotonous. I want a few muted, desaturated colors used deliberately for different roles — not all the same color, but not bright/neon either. Keep the dark control-room background as-is.
 > 
 > Specifically:
-> 1. Restore "KOHLER" as bold text in the top-left, above or next to "facility monitor" (like the previous version had), as the actual brand anchor of the page.
+> 1. Restore "FACILITY" as bold text in the top-left, above or next to "facility monitor" (like the previous version had), as the actual brand anchor of the page.
 > 2. Replace the single bright teal with a muted, low-saturation palette:
 >    - A muted slate-blue (around #6B8CAE) for primary UI elements (icons, active nav state, chart gridlines/axis)
 >    - A muted warm brass/gold (around #B08D57) as a secondary accent — use this for one distinct thing, like the "flagged tickets" metric or an active zone selector, so it doesn't compete with the primary color
@@ -104,7 +104,7 @@ All technical requirements, engineering decisions, and prompt formulations docum
 **What was built:**
 - Hex values submitted, reviewed, and approved via implementation plan.
 - `.streamlit/config.toml` updated with `primaryColor = "#6B8CAE"` so native widgets (slider thumbs, radio selections) automatically use muted slate-blue.
-- `src/dashboard.py` brand anchor: Added prominent bold uppercase `KOHLER` lockup (`font-weight: 700; letter-spacing: 0.08em;`) next to `/ facility monitor` in the page header and in the sidebar.
+- `src/dashboard.py` brand anchor: Added prominent bold uppercase `FACILITY` lockup (`font-weight: 700; letter-spacing: 0.08em;`) next to `/ facility monitor` in the page header and in the sidebar.
 - Semantic metric card tiers:
   - Non-alert metrics ("sensor readings", "zones monitored"): Quiet neutral gray-blue borders and icons (`#4A5864` / `#6B7C8C`), uncolored.
   - Action/alert metrics: "flagged tickets" highlighted with 3px left border and icon in warm brass (`#B08D57`); "estimated water loss" accented in muted slate-blue (`#6B8CAE`).
@@ -124,9 +124,9 @@ All technical requirements, engineering decisions, and prompt formulations docum
 **Date:** 2024-01-15  
 **Prompt given:**
 > A few fixes needed on the current dashboard:
-> 1. HEADER LAYOUT BUG: The "KOHLER / facility monitor" header text is currently clipped/overlapping — "KOHLER" appears cut off at the top and collides with "facility monitor" next to it. Fix this by restructuring the header entirely:
->    - "KOHLER" on its own line — bold, larger size (this is the primary brand anchor of the page, should be the most prominent text at the top)
->    - "facility monitor" directly below it, on its own line, smaller and lighter weight (not bold, secondary to KOHLER)
+> 1. HEADER LAYOUT BUG: The "FACILITY / facility monitor" header text is currently clipped/overlapping — "FACILITY" appears cut off at the top and collides with "facility monitor" next to it. Fix this by restructuring the header entirely:
+>    - "FACILITY" on its own line — bold, larger size (this is the primary brand anchor of the page, should be the most prominent text at the top)
+>    - "facility monitor" directly below it, on its own line, smaller and lighter weight (not bold, secondary to FACILITY)
 >    - Remove the "/" separator between them since they're now stacked, not inline
 >    - Make sure there's enough line-height/padding so nothing clips regardless of browser zoom or window size
 > 2. LEGEND OVERLAPPING CHART TITLE: On both the "flow rate over time" chart and the "replay demo" graph, the series legend (e.g. "Sink_01 (Restroom_A) — Sink_02..." ) is overlapping/crashing into the chart's title text above it. Fix the layout so the legend has its own clear space — either wrap it below the title with proper margin, or move it to a side/bottom position on the chart itself so it never collides with the title regardless of how many series are selected.
@@ -137,7 +137,7 @@ All technical requirements, engineering decisions, and prompt formulations docum
 
 **What was built:**
 - Header restructure:
-  - Stacked hierarchy with "KOHLER" prominently anchored on line 1 in bold uppercase sans (`font-weight: 700; font-size: 1.75rem; letter-spacing: 0.08em; line-height: 1.25;`).
+  - Stacked hierarchy with "FACILITY" prominently anchored on line 1 in bold uppercase sans (`font-weight: 700; font-size: 1.75rem; letter-spacing: 0.08em; line-height: 1.25;`).
   - "facility monitor" positioned directly beneath on line 2 in lighter editorial serif (`Fraunces`, `font-weight: 300; font-size: 1.15rem; color: var(--text-muted);`).
   - Removed "/" separator entirely; added ample vertical padding (`padding-top: 0.25rem; padding-bottom: 1.15rem;`) eliminating any clipping across all viewport sizes and zoom levels.
 - Chart legend collision resolution:
@@ -154,10 +154,10 @@ All technical requirements, engineering decisions, and prompt formulations docum
 ### Prompt 6 — Header Line-Height & Overflow Clipping Fix
 **Date:** 2024-01-15  
 **Prompt given:**
-> The "KOHLER" heading text is still visually clipped at the top — the tops of letters like K and R are being cut off. This is a CSS overflow/line-height issue, not a font-size issue — the container or line-height is too tight for the font size being used.
+> The "FACILITY" heading text is still visually clipped at the top — the tops of letters like K and R are being cut off. This is a CSS overflow/line-height issue, not a font-size issue — the container or line-height is too tight for the font size being used.
 > 
 > Please fix by:
-> 1. Checking whatever container (div, header, custom CSS class) wraps the "KOHLER" text for a fixed height or overflow: hidden — remove or increase it so it's not clipping content
+> 1. Checking whatever container (div, header, custom CSS class) wraps the "FACILITY" text for a fixed height or overflow: hidden — remove or increase it so it's not clipping content
 > 2. Increasing the line-height on that heading to at least 1.3–1.4x the font-size, not 1.0 or lower, so ascenders/descenders have room
 > 3. Adding a small amount of top padding to the heading's container if the clipping persists after the line-height fix
 > 4. Confirm this doesn't reintroduce the earlier overlap issue with "facility monitor" below it — there should be clear, non-overlapping space between them
@@ -174,7 +174,7 @@ The clipping was caused by two interacting factors:
 - Added explicit `padding-top: 4px;` and `margin: 0 0 0.25rem;` on `.brand-title`.
 - Added `overflow: visible !important;` to `.page-header`, `[data-testid="stMarkdownContainer"]:has(.page-header)`, and `.brand-title`.
 - Increased `.page-header` top padding to `0.75rem` and bottom padding to `1.25rem`.
-- Maintained clear, non-overlapping spacing between `KOHLER` and `facility monitor` (`margin: 0 0 0.55rem; line-height: 1.4;`).
+- Maintained clear, non-overlapping spacing between `FACILITY` and `facility monitor` (`margin: 0 0 0.55rem; line-height: 1.4;`).
 - Verified live in browser: letters K, O, H, L, E, R render cleanly with 0 clipped pixels.
 
 ---
@@ -182,12 +182,12 @@ The clipping was caused by two interacting factors:
 ### Prompt 7 — Title Case Branding ("Facility Monitor")
 **Date:** 2024-01-15  
 **Prompt given:**
-> Change "facility monitor" to "Facility Monitor" (title case) everywhere it appears on the page — both in the sidebar ("KOHLER facility monitor" → "KOHLER Facility Monitor") and in the main header below "KOHLER" ("facility monitor" → "Facility Monitor"). No other styling changes.
+> Change "facility monitor" to "Facility Monitor" (title case) everywhere it appears on the page — both in the sidebar ("FACILITY facility monitor" → "Facility Monitor") and in the main header below "FACILITY" ("facility monitor" → "Facility Monitor"). No other styling changes.
 
 **What was built:**
-- Updated browser document `page_title` in `st.set_page_config` to `"KOHLER Facility Monitor"`.
-- Updated sidebar brand lockup to `"KOHLER Facility Monitor"`.
-- Updated main page header line 2 directly below `KOHLER` to `"Facility Monitor"`.
+- Updated browser document `page_title` in `st.set_page_config` to `"Facility Monitor"`.
+- Updated sidebar brand lockup to `"Facility Monitor"`.
+- Updated main page header line 2 directly below `FACILITY` to `"Facility Monitor"`.
 - Verified live in browser with zero console errors.
 
 ---
@@ -567,7 +567,7 @@ Given the submission deadline and the priority of Phase 3 (LLM explanation layer
 | T2_Family_Room | Sink_06, Toilet_F1 | 0.25 |
 | T2_Staff_WC | Sink_07, Toilet_S1 | 0.12 |
 
-Added `EVENT_PARAMS` (volume/duration per fixture type from KOHLER commercial specs), `BASE_EVENTS_PER_HOUR` (airport traffic curve, ~6 events/fixture/hr at morning peak), and `ZONE_TRAFFIC_MULTIPLIER`.
+Added `EVENT_PARAMS` (volume/duration per fixture type from commercial fixture specs), `BASE_EVENTS_PER_HOUR` (airport traffic curve, ~6 events/fixture/hr at morning peak), and `ZONE_TRAFFIC_MULTIPLIER`.
 
 **`src/simulator.py` — discrete Poisson event model:**
 
@@ -926,7 +926,7 @@ Added `--preview` flag for 6h/3-fixture sanity check before committing to full r
 **Date:** 2026-09-19  
 **Branch:** `feature-extensions`  
 **Prompt given:**
-> @KOHLER_Track2_Feature_Implementation_Plan.md
+> @Track2_Feature_Implementation_Plan.md
 > 
 > Phase 1 (explainability) is done and verified. Now implement Feature 2 (Water-Savings / Sustainability Impact), Section 2 of the plan, extending the existing water-loss/cost fields — do not duplicate them.
 > 
@@ -1047,7 +1047,7 @@ Added `--preview` flag for 6h/3-fixture sanity check before committing to full r
 > Target look: moderately saturated colors — NOT the fully muted/desaturated palette currently on the flow rate chart, but also NOT bright, high-saturation "default AI dashboard" colors. Aim for roughly mid-saturation tones that feel intentional and calm but still have enough color presence to be visually engaging — think professional product dashboard (e.g., Linear, Notion, Vercel's dashboard), not a monochrome ops-console look, and not neon SaaS either.
 > 
 > Define ONE explicit palette first, before touching any component:
-> 1. A primary brand accent color (moderately saturated, used for primary actions/active states/KOHLER branding)
+> 1. A primary brand accent color (moderately saturated, used for primary actions/active states/branding)
 > 2. A secondary accent (a complementary moderately-saturated color, for secondary emphasis)
 > 3. Zone colors for the flow rate telemetry chart: 4 distinct, moderately-saturated colors that are clearly distinguishable from each other and readable against the dark background. The filter chips for these zones MUST use these exact same 4 colors.
 > 4. Status/severity colors: Critical, High, Medium, Low. These can be the most saturated colors in the system since they signal urgency, but should still feel grounded rather than neon.
@@ -1325,11 +1325,11 @@ Added `--preview` flag for 6h/3-fixture sanity check before committing to full r
 **Prompt given:**
 > Two changes to the header:
 > 
-> 1. Remove the "K" logo box entirely — the small rounded square icon showing "K" to the left of "KOHLER FACILITY MONITOR".
+> 1. Remove the "K" logo box entirely — the small rounded square icon showing "K" to the left of "FACILITY MONITOR".
 > 
-> 2. Remove the "Live Telemetry" badge/pill entirely — the green dot + text currently shown next to "KOHLER FACILITY MONITOR".
+> 2. Remove the "Live Telemetry" badge/pill entirely — the green dot + text currently shown next to "FACILITY MONITOR".
 > 
-> Just remove both elements cleanly — adjust spacing so the remaining header text ("KOHLER FACILITY MONITOR" and the subtitle below it) sits naturally without a gap where these used to be. Don't change anything else in the header or elsewhere.
+> Just remove both elements cleanly — adjust spacing so the remaining header text ("FACILITY MONITOR" and the subtitle below it) sits naturally without a gap where these used to be. Don't change anything else in the header or elsewhere.
 > 
 > Show me a screenshot of the updated header.
 
@@ -1338,7 +1338,7 @@ Added `--preview` flag for 6h/3-fixture sanity check before committing to full r
 - **Removed "Live Telemetry" Pill:** Removed the pulsating green pill `<span className="... bg-[#2EB88A]/15 ...">` adjacent to the title.
 - **Natural Spacing Alignment:**
   - Consolidated the brand lockup directly into a clean block without outer gap spacing.
-  - The title `KOHLER Facility Monitor` and its subtitle `Terminal 2 Airport Restroom Block · 4 Zones · 17 Smart Fixtures · Jan 15–21, 2024` now sit flush to the left edge with zero residual spacing.
+  - The title `Facility Monitor` and its subtitle `Terminal 2 Airport Restroom Block · 4 Zones · 17 Smart Fixtures · Jan 15–21, 2024` now sit flush to the left edge with zero residual spacing.
 - **Verification:**
   - TypeScript checked with 0 errors.
   - Captured browser screenshot `header_updated_view_1789911383529.png` verifying the clean, uncluttered header presentation.
@@ -1527,11 +1527,11 @@ Added `--preview` flag for 6h/3-fixture sanity check before committing to full r
 **Prompt given:**
 > Please remove project_summary_for_review.md from the repository — it was a working file for external review and isn't part of the actual project deliverable. Delete the file entirely (not just untrack it).
 > 
-> Keep facility_manager_prd.md and KOHLER_Track2_Feature_Implementation_Plan.md as-is — these are legitimate planning documentation and should remain.
+> Keep facility_manager_prd.md and Track2_Feature_Implementation_Plan.md as-is — these are legitimate planning documentation and should remain.
 
 **What was done:**
 - Deleted `project_summary_for_review.md` entirely from disk and staged the removal in git.
-- Verified that official planning and specification documents `facility_manager_prd.md` and `KOHLER_Track2_Feature_Implementation_Plan.md` remain intact in the project root.
+- Verified that official planning and specification documents `facility_manager_prd.md` and `Track2_Feature_Implementation_Plan.md` remain intact in the project root.
 
 **Files changed:** `project_summary_for_review.md` (deleted), `prompts_log.md`.
 

@@ -1,5 +1,5 @@
 """
-fixture_health.py — Predictive Fixture Health scoring model for KOHLER Facility Monitor.
+fixture_health.py — Predictive Fixture Health scoring model for Smart Facility Monitor.
 
 Implements Section 1 of the Track 2 Feature Implementation Plan:
 - Transparent 6-factor weighted risk formula (Section 1.3)

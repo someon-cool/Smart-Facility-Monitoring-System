@@ -232,7 +232,7 @@ function DashboardPage() {
     // Replay Simulator: Filtered data according to replayHours
     const replayCutoffDate = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
         "DashboardPage.useMemo[replayCutoffDate]": ()=>{
-            if (!metrics?.sim_start) return new Date("2024-10-02T00:00:00");
+            if (!metrics?.sim_start) return new Date("2024-10-01T00:00:00");
             const start = new Date(metrics.sim_start);
             return new Date(start.getTime() + replayHours * 3600 * 1000);
         }
@@ -399,7 +399,7 @@ function DashboardPage() {
                                             children: [
                                                 "Terminal 2 · Data as of",
                                                 " ",
-                                                metrics?.sim_end ? (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$format$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatDateTime"])(metrics.sim_end) : "8 Oct 2024, 23:59"
+                                                metrics?.sim_end ? (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$format$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatDateTime"])(metrics.sim_end) : "7 Oct 2024, 23:59"
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/app/page.tsx",
@@ -490,7 +490,7 @@ function DashboardPage() {
                                 columnNumber: 13
                             }, this),
                             viewMode === "replay" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ReplayScrubber$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ReplayScrubber"], {
-                                simStart: metrics?.sim_start || "2024-10-02T00:00:00",
+                                simStart: metrics?.sim_start || "2024-10-01T00:00:00",
                                 simDurationHours: metrics?.sim_duration_hours || 168,
                                 currentHours: replayHours,
                                 onChangeHours: setReplayHours,
@@ -2973,51 +2973,51 @@ const ZONE_CHART_CONFIG = {
 const RANGE_OPTIONS = [
     {
         value: "all",
-        label: "Full 7 days (2–8 Oct)"
+        label: "Full 7 days (1–7 Oct)"
     },
     {
         value: "last24h",
-        label: "Last 24 hours (8 Oct)"
+        label: "Last 24 hours (7 Oct)"
     },
     {
         value: "day1",
-        label: "2 Oct (Day 1)"
+        label: "1 Oct (Day 1)"
     },
     {
         value: "day2",
-        label: "3 Oct (Day 2)"
+        label: "2 Oct (Day 2)"
     },
     {
         value: "day3",
-        label: "4 Oct (Day 3)"
+        label: "3 Oct (Day 3)"
     },
     {
         value: "day4",
-        label: "5 Oct (Day 4)"
+        label: "4 Oct (Day 4)"
     },
     {
         value: "day5",
-        label: "6 Oct (Day 5)"
+        label: "5 Oct (Day 5)"
     },
     {
         value: "day6",
-        label: "7 Oct (Day 6)"
+        label: "6 Oct (Day 6)"
     },
     {
         value: "day7",
-        label: "8 Oct (Day 7)"
+        label: "7 Oct (Day 7)"
     }
 ];
 const isTimestampInRange = (tsStr, range)=>{
     if (range === "all") return true;
-    if (range === "last24h") return tsStr.startsWith("2024-10-08");
-    if (range === "day1") return tsStr.startsWith("2024-10-02");
-    if (range === "day2") return tsStr.startsWith("2024-10-03");
-    if (range === "day3") return tsStr.startsWith("2024-10-04");
-    if (range === "day4") return tsStr.startsWith("2024-10-05");
-    if (range === "day5") return tsStr.startsWith("2024-10-06");
-    if (range === "day6") return tsStr.startsWith("2024-10-07");
-    if (range === "day7") return tsStr.startsWith("2024-10-08");
+    if (range === "last24h") return tsStr.startsWith("2024-10-07");
+    if (range === "day1") return tsStr.startsWith("2024-10-01");
+    if (range === "day2") return tsStr.startsWith("2024-10-02");
+    if (range === "day3") return tsStr.startsWith("2024-10-03");
+    if (range === "day4") return tsStr.startsWith("2024-10-04");
+    if (range === "day5") return tsStr.startsWith("2024-10-05");
+    if (range === "day6") return tsStr.startsWith("2024-10-06");
+    if (range === "day7") return tsStr.startsWith("2024-10-07");
     return true;
 };
 function FlowRateChart({ readings, zoneTotals, loading, isReplay = false, replayCutoffDate, replayHours = 0 }) {
@@ -4904,7 +4904,7 @@ function ReplayScrubber({ simStart, simDurationHours, currentHours, onChangeHour
     ]);
     // Compute simulated timestamp from currentHours
     const currentTimestamp = ()=>{
-        const startDate = new Date(simStart || "2024-10-02T00:00:00");
+        const startDate = new Date(simStart || "2024-10-01T00:00:00");
         const d = new Date(startDate.getTime() + currentHours * 3600 * 1000);
         return (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$format$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatDateTime"])(d);
     };

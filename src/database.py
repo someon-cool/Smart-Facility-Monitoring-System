@@ -655,7 +655,20 @@ def get_sensor_intelligence(db_path: str) -> dict:
         s_type = cfg.get("sensor_type", "infrared")
         spec = SENSOR_SPECS.get(s_type, SENSOR_SPECS["infrared"])
 
+        total_samples = f_stats.get("total_samples", 10080)
+        fault_samples = f_stats.get("fault_samples", 0)
+        uptime = round((1.0 - (fault_samples / total_samples)) * 100.0, 1) if total_samples else 100.0
+        uptime_sum += uptime
+
         status = latest.get("sensor_status", "OK")
+        if status == "OK":
+            if f_stats.get("hard_faults", 0) > 0 and uptime < 98.0:
+                status = "FAULT"
+            elif f_stats.get("offline_samples", 0) > 0 and uptime < 99.0:
+                status = "OFFLINE"
+            elif f_stats.get("degraded_samples", 0) > 0 and uptime < 99.0:
+                status = "DEGRADED"
+
         if status == "OK":
             total_online += 1
         elif status == "DEGRADED":
@@ -664,11 +677,6 @@ def get_sensor_intelligence(db_path: str) -> dict:
             total_fault += 1
         elif status == "OFFLINE":
             total_offline += 1
-
-        total_samples = f_stats.get("total_samples", 10080)
-        fault_samples = f_stats.get("fault_samples", 0)
-        uptime = round((1.0 - (fault_samples / total_samples)) * 100.0, 1) if total_samples else 100.0
-        uptime_sum += uptime
 
         flow = float(latest.get("flow_rate_lpm") or 0.0)
         occ = int(latest.get("occupancy") or 0)

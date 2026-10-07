@@ -13,7 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = PROJECT_ROOT / "facility.db"   # created at project root, not inside src/
 
 # ── Simulation window ──────────────────────────────────────────────────────────
-SIM_START = datetime.datetime(2024, 10, 2, 0, 0, 0)   # Oct 2 2024, 00:00 (Wednesday)
+SIM_START = datetime.datetime(2024, 10, 1, 0, 0, 0)   # Oct 1 2024, 00:00 (Tuesday)
 SIM_DURATION_HOURS = 168                               # 7 full days (168 hours)
 READING_INTERVAL_MINUTES = 1                           # one row per minute per fixture
 

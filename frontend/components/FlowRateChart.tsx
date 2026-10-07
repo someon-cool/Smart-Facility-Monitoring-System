@@ -61,27 +61,27 @@ const ZONE_CHART_CONFIG: Record<
 };
 
 const RANGE_OPTIONS = [
-  { value: "all", label: "Full 7 days (2–8 Oct)" },
-  { value: "last24h", label: "Last 24 hours (8 Oct)" },
-  { value: "day1", label: "2 Oct (Day 1)" },
-  { value: "day2", label: "3 Oct (Day 2)" },
-  { value: "day3", label: "4 Oct (Day 3)" },
-  { value: "day4", label: "5 Oct (Day 4)" },
-  { value: "day5", label: "6 Oct (Day 5)" },
-  { value: "day6", label: "7 Oct (Day 6)" },
-  { value: "day7", label: "8 Oct (Day 7)" },
+  { value: "all", label: "Full 7 days (1–7 Oct)" },
+  { value: "last24h", label: "Last 24 hours (7 Oct)" },
+  { value: "day1", label: "1 Oct (Day 1)" },
+  { value: "day2", label: "2 Oct (Day 2)" },
+  { value: "day3", label: "3 Oct (Day 3)" },
+  { value: "day4", label: "4 Oct (Day 4)" },
+  { value: "day5", label: "5 Oct (Day 5)" },
+  { value: "day6", label: "6 Oct (Day 6)" },
+  { value: "day7", label: "7 Oct (Day 7)" },
 ];
 
 const isTimestampInRange = (tsStr: string, range: string) => {
   if (range === "all") return true;
-  if (range === "last24h") return tsStr.startsWith("2024-10-08");
-  if (range === "day1") return tsStr.startsWith("2024-10-02");
-  if (range === "day2") return tsStr.startsWith("2024-10-03");
-  if (range === "day3") return tsStr.startsWith("2024-10-04");
-  if (range === "day4") return tsStr.startsWith("2024-10-05");
-  if (range === "day5") return tsStr.startsWith("2024-10-06");
-  if (range === "day6") return tsStr.startsWith("2024-10-07");
-  if (range === "day7") return tsStr.startsWith("2024-10-08");
+  if (range === "last24h") return tsStr.startsWith("2024-10-07");
+  if (range === "day1") return tsStr.startsWith("2024-10-01");
+  if (range === "day2") return tsStr.startsWith("2024-10-02");
+  if (range === "day3") return tsStr.startsWith("2024-10-03");
+  if (range === "day4") return tsStr.startsWith("2024-10-04");
+  if (range === "day5") return tsStr.startsWith("2024-10-05");
+  if (range === "day6") return tsStr.startsWith("2024-10-06");
+  if (range === "day7") return tsStr.startsWith("2024-10-07");
   return true;
 };
 

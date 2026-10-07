@@ -69,6 +69,7 @@ from src.config import (
 )
 from src.database import get_readings_df, get_tickets_df, insert_ticket, save_daily_digest
 from src.explainability import build_ticket_evidence
+from src.llm import _deterministic_ticket_fallback
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -472,7 +473,7 @@ def session_to_ticket(session: dict) -> dict:
         "anomaly_type":                session.get("anomaly_type", "sustained_leak"),
         "severity_score":              session.get("severity_score"),
         "severity_label":              session.get("severity_label", "Flagged"),
-        "explanation":                 session.get("explanation", ""),
+        "explanation":                 session.get("explanation") or _deterministic_ticket_fallback(session),
         "estimated_water_loss_liters": water_loss,
         "estimated_cost_impact":       cost,
         "status":                      "open",
@@ -542,11 +543,7 @@ def run_detection() -> None:
     for sd in slow_drips:
         tickets.append(session_to_ticket(sd))
 
-    # Pass 4 -- LLM ticket explanation generation (Google Gemini API)
-    print("\nPass 4 -- Generating LLM explanations (Google Gemini API)...")
-    from src.llm import enrich_tickets_with_explanations, generate_daily_digest
-    tickets = enrich_tickets_with_explanations(tickets)
-
+    # Pass 4 -- Write tickets to database & mark maintenance workflows
     print(f"\nWriting {len(tickets)} ticket(s) to database...")
     for t in tickets:
         insert_ticket(str(DB_PATH), t)
@@ -568,11 +565,21 @@ def run_detection() -> None:
             resolution_note = 'Routine round maintenance: Cleared mineral scale from aerator and tightened supply fitting.'
         WHERE fixture_id = 'Sink_04'
     """)
+    _c.execute("""
+        UPDATE tickets
+        SET status = 'dispatched'
+        WHERE ticket_id IN (
+            SELECT ticket_id FROM tickets
+            WHERE status = 'open' AND fixture_id IN ('Toilet_S1', 'Toilet_B1', 'Toilet_F1')
+            LIMIT 3
+        )
+    """)
     _conn.commit()
     _conn.close()
 
     # Pass 5 -- End-of-day digest generation (Section 5.2)
     print("\nPass 5 -- Generating End-of-Day Digests (Section 5.2)...")
+    from src.llm import generate_daily_digest
     dates = sorted(list({str(t["timestamp_flagged"])[:10] for t in tickets if t.get("timestamp_flagged")}))
     for d_str in dates:
         digest = generate_daily_digest(tickets, d_str)

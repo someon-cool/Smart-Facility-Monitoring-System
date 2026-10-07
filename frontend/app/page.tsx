@@ -216,7 +216,7 @@ export default function DashboardPage() {
 
   // Replay Simulator: Filtered data according to replayHours
   const replayCutoffDate = useMemo(() => {
-    if (!metrics?.sim_start) return new Date("2024-10-02T00:00:00");
+    if (!metrics?.sim_start) return new Date("2024-10-01T00:00:00");
     const start = new Date(metrics.sim_start);
     return new Date(start.getTime() + replayHours * 3600 * 1000);
   }, [metrics?.sim_start, replayHours]);
@@ -342,7 +342,7 @@ export default function DashboardPage() {
                   Terminal 2 · Data as of{" "}
                   {metrics?.sim_end
                     ? formatDateTime(metrics.sim_end)
-                    : "8 Oct 2024, 23:59"}
+                    : "7 Oct 2024, 23:59"}
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -401,7 +401,7 @@ export default function DashboardPage() {
             {/* Replay Scrubber: flat inline directly UNDER the flow chart when in Replay */}
             {viewMode === "replay" && (
               <ReplayScrubber
-                simStart={metrics?.sim_start || "2024-10-02T00:00:00"}
+                simStart={metrics?.sim_start || "2024-10-01T00:00:00"}
                 simDurationHours={metrics?.sim_duration_hours || 168}
                 currentHours={replayHours}
                 onChangeHours={setReplayHours}

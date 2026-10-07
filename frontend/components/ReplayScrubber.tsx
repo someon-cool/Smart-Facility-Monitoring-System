@@ -52,7 +52,7 @@ export function ReplayScrubber({
 
   // Compute simulated timestamp from currentHours
   const currentTimestamp = () => {
-    const startDate = new Date(simStart || "2024-10-02T00:00:00");
+    const startDate = new Date(simStart || "2024-10-01T00:00:00");
     const d = new Date(startDate.getTime() + currentHours * 3600 * 1000);
     return formatDateTime(d);
   };
